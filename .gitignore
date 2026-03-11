@@ -5,39 +5,25 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 # Node modules
-node_modules
-dist
-dist-ssr
-*.local
+node_modules/
 
-# Editor directories and files
+# IDE / Editor
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
-*.ntvs*
-*.njsproj
 *.sln
 *.sw?
 
-# SQLite databases
-# Ignoring local DBs used for testing/dev if they ever ended up in the project folder
-*.db
-*.sqlite
-*.sqlite3
-jauv_pos.db
-jauv_pos.db-wal
-jauv_pos.db-shm
-
-# Electron builder output
+# Build & Output
+dist/
+dist-ssr/
+dist-electron/
 out/
 release/
-dist/
-dist_electron/
 build/
 app-builds/
 *.exe
@@ -48,16 +34,25 @@ app-builds/
 *.pkg
 *.snap
 
-# Vite output
+# Vite / Tools
 .vite/
+.turbo/
+.cache/
+
+# SQLite databases (Local development)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+jauv_pos.db
 
 # Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
 
-# npm/yarn locks (optional - recommended to keep package-lock.json but ignore cache)
+# npm/yarn locks
+# Recommend keeping package-lock.json, but ignore cache
 .npm/
 .yarn/
+

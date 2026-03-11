@@ -7,15 +7,18 @@ function generateCode() {
   return 'PAP-' + crypto.randomBytes(3).toString('hex').toUpperCase();
 }
 
-function ensureUniqueCode(db) {
+async function ensureUniqueCode(db) {
   let code;
+  let exists = true;
   do {
     code = generateCode();
-  } while (db.prepare('SELECT id FROM productos WHERE codigo = ?').get(code));
+    const row = await db.get('SELECT id FROM productos WHERE codigo = ?', [code]);
+    exists = !!row;
+  } while (exists);
   return code;
 }
 
-ipcMain.handle('productos:list', (_e, filters = {}) => {
+ipcMain.handle('productos:list', async (_e, filters = {}) => {
   const db = getDb();
   let sql = `SELECT p.*, c.nombre AS categoria_nombre
              FROM productos p
@@ -38,47 +41,68 @@ ipcMain.handle('productos:list', (_e, filters = {}) => {
   if (where.length) sql += ' WHERE ' + where.join(' AND ');
   sql += ' ORDER BY p.nombre ASC';
 
-  return db.prepare(sql).all(...params);
+  return await db.all(sql, params);
 });
 
-ipcMain.handle('productos:get', (_e, id) => {
-  return getDb().prepare('SELECT * FROM productos WHERE id = ?').get(id);
+ipcMain.handle('productos:get', async (_e, id) => {
+  return await getDb().get('SELECT * FROM productos WHERE id = ?', [id]);
 });
 
-ipcMain.handle('productos:create', (_e, data) => {
+ipcMain.handle('productos:create', async (_e, data) => {
   const db = getDb();
-  const codigo = (data.codigo && data.codigo.trim()) ? data.codigo.trim() : ensureUniqueCode(db);
-  const info = db.prepare(`
+  const codigo = (data.codigo && data.codigo.trim()) ? data.codigo.trim() : await ensureUniqueCode(db);
+  const info = await db.run(`
     INSERT INTO productos (codigo, nombre, marca, precio_compra_usd, precio_venta_usd, stock_actual, stock_minimo, categoria_id, descripcion)
-    VALUES (@codigo, @nombre, @marca, @precio_compra_usd, @precio_venta_usd, @stock_actual, @stock_minimo, @categoria_id, @descripcion)
-  `).run({ ...data, codigo, marca: data.marca || '', descripcion: data.descripcion || '', categoria_id: data.categoria_id || null });
-  return { id: info.lastInsertRowid, codigo };
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    codigo,
+    data.nombre,
+    data.marca || '',
+    data.precio_compra_usd,
+    data.precio_venta_usd,
+    data.stock_actual,
+    data.stock_minimo,
+    data.categoria_id || null,
+    data.descripcion || ''
+  ]);
+  return { id: info.lastID, codigo };
 });
 
-ipcMain.handle('productos:update', (_e, { id, ...data }) => {
+ipcMain.handle('productos:update', async (_e, { id, ...data }) => {
   const db = getDb();
-  db.prepare(`
+  await db.run(`
     UPDATE productos SET
-      codigo = @codigo, nombre = @nombre, marca = @marca,
-      precio_compra_usd = @precio_compra_usd, precio_venta_usd = @precio_venta_usd,
-      stock_actual = @stock_actual, stock_minimo = @stock_minimo,
-      categoria_id = @categoria_id, descripcion = @descripcion
-    WHERE id = @id
-  `).run({ ...data, id });
+      codigo = ?, nombre = ?, marca = ?,
+      precio_compra_usd = ?, precio_venta_usd = ?,
+      stock_actual = ?, stock_minimo = ?,
+      categoria_id = ?, descripcion = ?
+    WHERE id = ?
+  `, [
+    data.codigo,
+    data.nombre,
+    data.marca,
+    data.precio_compra_usd,
+    data.precio_venta_usd,
+    data.stock_actual,
+    data.stock_minimo,
+    data.categoria_id,
+    data.descripcion,
+    id
+  ]);
   return true;
 });
 
-ipcMain.handle('productos:delete', (_e, id) => {
-  getDb().prepare('DELETE FROM productos WHERE id = ?').run(id);
+ipcMain.handle('productos:delete', async (_e, id) => {
+  await getDb().run('DELETE FROM productos WHERE id = ?', [id]);
   return true;
 });
 
-ipcMain.handle('productos:search', (_e, query) => {
+ipcMain.handle('productos:search', async (_e, query) => {
   const like = `%${query}%`;
-  return getDb().prepare(`
+  return await getDb().all(`
     SELECT p.*, c.nombre AS categoria_nombre FROM productos p
     LEFT JOIN categorias c ON c.id = p.categoria_id
     WHERE p.nombre LIKE ? OR p.codigo LIKE ? OR p.marca LIKE ?
     ORDER BY p.nombre ASC LIMIT 20
-  `).all(like, like, like);
+  `, [like, like, like]);
 });

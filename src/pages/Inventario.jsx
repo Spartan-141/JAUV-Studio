@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import JsBarcode from 'jsbarcode'
+import ConfirmationModal from '../components/ConfirmationModal.jsx'
+
 
 // ── Barcode display ──────────────────────────────────────────────────────────
 function BarcodeImg({ code }) {
@@ -8,7 +10,7 @@ function BarcodeImg({ code }) {
   useEffect(() => {
     if (ref.current && code) {
       try { JsBarcode(ref.current, code, { format: 'CODE128', height: 40, displayValue: false }) }
-      catch {}
+      catch { }
     }
   }, [code])
   return code ? <svg ref={ref} className="h-10" /> : null
@@ -187,6 +189,7 @@ export default function Inventario() {
   const [modal, setModal] = useState(null) // null | 'crear' | 'editar' | 'merma'
   const [selected, setSelected] = useState(null)
   const [newCat, setNewCat] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null) // null | producto
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -206,8 +209,14 @@ export default function Inventario() {
   useEffect(() => { load() }, [load])
 
   const deleteProd = async (p) => {
-    if (!confirm(`¿Eliminar "${p.nombre}"?`)) return
+    setConfirmDelete(p)
+  }
+
+  const handleConfirmDelete = async () => {
+    const p = confirmDelete
+    if (!p) return
     await window.api.invoke('productos:delete', p.id)
+    setConfirmDelete(null)
     load()
   }
 
@@ -294,7 +303,7 @@ export default function Inventario() {
                   <td><span className="badge-blue">{p.categoria_nombre || '—'}</span></td>
                   <td className="text-right text-gray-400">{fmt(p.precio_compra_usd)}</td>
                   <td className="text-right font-semibold text-white">{fmt(p.precio_venta_usd)}</td>
-                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(p.precio_venta_usd).toLocaleString('es-VE',{maximumFractionDigits:2})}</td>
+                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(p.precio_venta_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</td>
                   <td className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className={`font-bold text-sm ${bajo ? 'text-red-400' : 'text-white'}`}>{p.stock_actual}</span>
@@ -322,6 +331,15 @@ export default function Inventario() {
       )}
       {modal === 'merma' && selected && (
         <MermaModal producto={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
+      )}
+
+      {confirmDelete && (
+        <ConfirmationModal
+          title="¿Eliminar Producto?"
+          message={`¿Estás seguro que deseas eliminar "${confirmDelete.nombre}"? Esta acción no se puede deshacer.`}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

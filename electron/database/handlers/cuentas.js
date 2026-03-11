@@ -3,39 +3,42 @@ const { ipcMain } = require('electron');
 const { getDb } = require('../db');
 
 // List credit sales (estado = 'credito')
-ipcMain.handle('cuentas:list', () => {
-  return getDb().prepare(`SELECT * FROM ventas WHERE estado = 'credito' ORDER BY fecha DESC`).all();
+ipcMain.handle('cuentas:list', async () => {
+  return await getDb().all(`SELECT * FROM ventas WHERE estado = 'credito' ORDER BY fecha DESC`);
 });
 
 // Get full detail + abonos for a credit sale
-ipcMain.handle('cuentas:get', (_e, ventaId) => {
+ipcMain.handle('cuentas:get', async (_e, ventaId) => {
   const db = getDb();
-  const venta = db.prepare('SELECT * FROM ventas WHERE id = ?').get(ventaId);
+  const venta = await db.get('SELECT * FROM ventas WHERE id = ?', [ventaId]);
   if (!venta) return null;
-  const detalles = db.prepare('SELECT * FROM detalle_venta WHERE venta_id = ?').all(ventaId);
-  const pagos = db.prepare('SELECT * FROM pagos WHERE venta_id = ?').all(ventaId);
-  const abonos = db.prepare('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC').all(ventaId);
+  const detalles = await db.all('SELECT * FROM detalle_venta WHERE venta_id = ?', [ventaId]);
+  const pagos = await db.all('SELECT * FROM pagos WHERE venta_id = ?', [ventaId]);
+  const abonos = await db.all('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC', [ventaId]);
   return { ...venta, detalles, pagos, abonos };
 });
 
 // Register a partial payment (abono)
-ipcMain.handle('cuentas:abonar', (_e, { venta_id, metodo, monto_usd, monto_ves, tasa }) => {
+ipcMain.handle('cuentas:abonar', async (_e, { venta_id, metodo, monto_usd, monto_ves, tasa }) => {
   const db = getDb();
-  const tx = db.transaction(() => {
-    db.prepare(`
+  try {
+    await db.run('BEGIN TRANSACTION');
+    await db.run(`
       INSERT INTO abonos (venta_id, metodo, monto_usd, monto_ves)
       VALUES (?, ?, ?, ?)
-    `).run(venta_id, metodo, monto_usd, monto_ves || (monto_usd * (tasa || 1)));
+    `, [venta_id, metodo, monto_usd, monto_ves || (monto_usd * (tasa || 1))]);
 
     // Recalculate pending balance
-    const venta = db.prepare('SELECT saldo_pendiente_usd, total_usd FROM ventas WHERE id = ?').get(venta_id);
+    const venta = await db.get('SELECT saldo_pendiente_usd, total_usd FROM ventas WHERE id = ?', [venta_id]);
     const nuevoSaldo = Math.max(0, parseFloat((venta.saldo_pendiente_usd - monto_usd).toFixed(8)));
 
     let nuevoEstado = nuevoSaldo <= 0.001 ? 'pagada' : 'credito';
-    db.prepare('UPDATE ventas SET saldo_pendiente_usd = ?, estado = ? WHERE id = ?')
-      .run(nuevoSaldo, nuevoEstado, venta_id);
+    await db.run('UPDATE ventas SET saldo_pendiente_usd = ?, estado = ? WHERE id = ?', [nuevoSaldo, nuevoEstado, venta_id]);
 
+    await db.run('COMMIT');
     return { saldo_pendiente_usd: nuevoSaldo, estado: nuevoEstado };
-  });
-  return tx();
+  } catch (err) {
+    await db.run('ROLLBACK');
+    throw err;
+  }
 });

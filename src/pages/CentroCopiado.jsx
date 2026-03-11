@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
+import ConfirmationModal from '../components/ConfirmationModal.jsx'
+
 
 // ── Insumo Modal ─────────────────────────────────────────────────────────────
 function InsumoModal({ insumo, onClose, onSave }) {
@@ -10,7 +12,7 @@ function InsumoModal({ insumo, onClose, onSave }) {
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
-    const data = { ...form, stock_hojas: parseInt(form.stock_hojas)||0, stock_minimo: parseInt(form.stock_minimo)||0, costo_por_hoja_usd: parseFloat(form.costo_por_hoja_usd)||0 }
+    const data = { ...form, stock_hojas: parseInt(form.stock_hojas) || 0, stock_minimo: parseInt(form.stock_minimo) || 0, costo_por_hoja_usd: parseFloat(form.costo_por_hoja_usd) || 0 }
     try {
       if (insumo?.id) await window.api.invoke('insumos:update', { id: insumo.id, ...data })
       else await window.api.invoke('insumos:create', data)
@@ -18,28 +20,28 @@ function InsumoModal({ insumo, onClose, onSave }) {
     } finally { setSaving(false) }
   }
   return (
-    <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-bold">{insumo ? 'Editar Insumo' : 'Nuevo Insumo'}</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
         <form onSubmit={submit} className="space-y-4">
-          <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e=>set('nombre',e.target.value)} /></div>
+          <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
           <div><label className="label">Tipo</label>
-            <select className="select" value={form.tipo} onChange={e=>set('tipo',e.target.value)}>
+            <select className="select" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
               <option value="carta">Carta</option><option value="oficio">Oficio</option>
               <option value="doble-carta">Doble Carta</option><option value="otro">Otro</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="label">Stock Hojas</label><input className="input" type="number" min="0" value={form.stock_hojas} onChange={e=>set('stock_hojas',e.target.value)} /></div>
-            <div><label className="label">Stock Mínimo</label><input className="input" type="number" min="0" value={form.stock_minimo} onChange={e=>set('stock_minimo',e.target.value)} /></div>
+            <div><label className="label">Stock Hojas</label><input className="input" type="number" min="0" value={form.stock_hojas} onChange={e => set('stock_hojas', e.target.value)} /></div>
+            <div><label className="label">Stock Mínimo</label><input className="input" type="number" min="0" value={form.stock_minimo} onChange={e => set('stock_minimo', e.target.value)} /></div>
           </div>
-          <div><label className="label">Costo por Hoja (USD)</label><input className="input" type="number" min="0" step="0.0001" value={form.costo_por_hoja_usd} onChange={e=>set('costo_por_hoja_usd',e.target.value)} /></div>
+          <div><label className="label">Costo por Hoja (USD)</label><input className="input" type="number" min="0" step="0.0001" value={form.costo_por_hoja_usd} onChange={e => set('costo_por_hoja_usd', e.target.value)} /></div>
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button type="submit" disabled={saving} className="btn-primary">{saving?'⏳...':'💾 Guardar'}</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? '⏳...' : '💾 Guardar'}</button>
           </div>
         </form>
       </div>
@@ -50,13 +52,13 @@ function InsumoModal({ insumo, onClose, onSave }) {
 // ── Servicio Modal ────────────────────────────────────────────────────────────
 function ServicioModal({ servicio, insumos, onClose, onSave }) {
   const blank = { nombre: '', precio_usd: '', insumo_id: '', activo: 1 }
-  const [form, setForm] = useState(servicio ? { ...servicio, insumo_id: servicio.insumo_id||'' } : blank)
+  const [form, setForm] = useState(servicio ? { ...servicio, insumo_id: servicio.insumo_id || '' } : blank)
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
-    const data = { ...form, precio_usd: parseFloat(form.precio_usd)||0, insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null }
+    const data = { ...form, precio_usd: parseFloat(form.precio_usd) || 0, insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null }
     try {
       if (servicio?.id) await window.api.invoke('servicios:update', { id: servicio.id, ...data })
       else await window.api.invoke('servicios:create', data)
@@ -64,24 +66,24 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
     } finally { setSaving(false) }
   }
   return (
-    <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-bold">{servicio ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
         <form onSubmit={submit} className="space-y-4">
-          <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e=>set('nombre',e.target.value)} /></div>
-          <div><label className="label">Precio (USD)</label><input className="input" type="number" min="0" step="0.01" required value={form.precio_usd} onChange={e=>set('precio_usd',e.target.value)} /></div>
+          <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
+          <div><label className="label">Precio (USD)</label><input className="input" type="number" min="0" step="0.01" required value={form.precio_usd} onChange={e => set('precio_usd', e.target.value)} /></div>
           <div><label className="label">Insumo (papel que consume)</label>
-            <select className="select" value={form.insumo_id} onChange={e=>set('insumo_id',e.target.value)}>
+            <select className="select" value={form.insumo_id} onChange={e => set('insumo_id', e.target.value)}>
               <option value="">Ninguno</option>
-              {insumos.map(i=><option key={i.id} value={i.id}>{i.nombre} ({i.stock_hojas} hojas)</option>)}
+              {insumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.stock_hojas} hojas)</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button type="submit" disabled={saving} className="btn-primary">{saving?'⏳...':'💾 Guardar'}</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? '⏳...' : '💾 Guardar'}</button>
           </div>
         </form>
       </div>
@@ -102,7 +104,7 @@ function AjusteModal({ insumo, onClose, onSave }) {
     } finally { setSaving(false) }
   }
   return (
-    <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-bold">Ajustar Stock — {insumo.nombre}</h2>
@@ -111,14 +113,14 @@ function AjusteModal({ insumo, onClose, onSave }) {
         <p className="text-gray-400 text-sm mb-4">Stock actual: <strong className="text-white">{insumo.stock_hojas} hojas</strong></p>
         <form onSubmit={submit} className="space-y-4">
           <div><label className="label">Operación</label>
-            <select className="select" value={form.operacion} onChange={e=>setForm(p=>({...p,operacion:e.target.value}))}>
+            <select className="select" value={form.operacion} onChange={e => setForm(p => ({ ...p, operacion: e.target.value }))}>
               <option value="sumar">➕ Agregar hojas</option><option value="restar">➖ Quitar hojas</option>
             </select>
           </div>
-          <div><label className="label">Cantidad</label><input className="input" type="number" min="1" required value={form.cantidad} onChange={e=>setForm(p=>({...p,cantidad:e.target.value}))} /></div>
+          <div><label className="label">Cantidad</label><input className="input" type="number" min="1" required value={form.cantidad} onChange={e => setForm(p => ({ ...p, cantidad: e.target.value }))} /></div>
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button type="submit" disabled={saving} className="btn-primary">{saving?'⏳...':'✅ Aplicar'}</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? '⏳...' : '✅ Aplicar'}</button>
           </div>
         </form>
       </div>
@@ -134,6 +136,7 @@ export default function CentroCopiado() {
   const [servicios, setServicios] = useState([])
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // null | { type, id, nombre }
 
   const load = useCallback(async () => {
     const [ins, srvs] = await Promise.all([
@@ -145,9 +148,15 @@ export default function CentroCopiado() {
 
   useEffect(() => { load() }, [load])
 
-  const deleteItem = async (type, id, nombre) => {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return
+  const deleteItem = (type, id, nombre) => {
+    setConfirmDelete({ type, id, nombre })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return
+    const { type, id } = confirmDelete
     await window.api.invoke(type === 'insumo' ? 'insumos:delete' : 'servicios:delete', id)
+    setConfirmDelete(null)
     load()
   }
 
@@ -162,9 +171,9 @@ export default function CentroCopiado() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-surface-800 rounded-xl p-1 w-fit border border-white/5">
-        {['insumos','servicios'].map(t => (
-          <button key={t} onClick={()=>setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab===t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+        {['insumos', 'servicios'].map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             {t === 'insumos' ? '📄 Insumos (Papel)' : '📋 Catálogo de Servicios'}
           </button>
         ))}
@@ -191,9 +200,9 @@ export default function CentroCopiado() {
                     <td className="text-gray-300">{fmt(i.costo_por_hoja_usd)}/hoja</td>
                     <td>
                       <div className="flex gap-1">
-                        <button onClick={()=>{setSelected(i);setModal('ajuste')}} className="btn-ghost btn-sm" title="Ajustar stock">📊</button>
-                        <button onClick={()=>{setSelected(i);setModal('insumo')}} className="btn-ghost btn-sm">✏️</button>
-                        <button onClick={()=>deleteItem('insumo',i.id,i.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
+                        <button onClick={() => { setSelected(i); setModal('ajuste') }} className="btn-ghost btn-sm" title="Ajustar stock">📊</button>
+                        <button onClick={() => { setSelected(i); setModal('insumo') }} className="btn-ghost btn-sm">✏️</button>
+                        <button onClick={() => deleteItem('insumo', i.id, i.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
                       </div>
                     </td>
                   </tr>
@@ -216,12 +225,12 @@ export default function CentroCopiado() {
                   <td className="font-medium text-white">{s.nombre}</td>
                   <td className="text-gray-400 text-xs">{s.insumo_nombre || '—'}</td>
                   <td className="text-right font-semibold text-white">{fmt(s.precio_usd)}</td>
-                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(s.precio_usd).toLocaleString('es-VE',{maximumFractionDigits:2})}</td>
+                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(s.precio_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</td>
                   <td><span className={s.activo ? 'badge-green' : 'badge-red'}>{s.activo ? 'Activo' : 'Inactivo'}</span></td>
                   <td>
                     <div className="flex gap-1">
-                      <button onClick={()=>{setSelected(s);setModal('servicio')}} className="btn-ghost btn-sm">✏️</button>
-                      <button onClick={()=>deleteItem('servicio',s.id,s.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
+                      <button onClick={() => { setSelected(s); setModal('servicio') }} className="btn-ghost btn-sm">✏️</button>
+                      <button onClick={() => deleteItem('servicio', s.id, s.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -231,9 +240,18 @@ export default function CentroCopiado() {
         </div>
       )}
 
-      {modal === 'insumo' && <InsumoModal insumo={selected} onClose={()=>setModal(null)} onSave={()=>{setModal(null);load()}} />}
-      {modal === 'servicio' && <ServicioModal servicio={selected} insumos={insumos} onClose={()=>setModal(null)} onSave={()=>{setModal(null);load()}} />}
-      {modal === 'ajuste' && selected && <AjusteModal insumo={selected} onClose={()=>setModal(null)} onSave={()=>{setModal(null);load()}} />}
+      {modal === 'insumo' && <InsumoModal insumo={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
+      {modal === 'servicio' && <ServicioModal servicio={selected} insumos={insumos} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
+      {modal === 'ajuste' && selected && <AjusteModal insumo={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
+
+      {confirmDelete && (
+        <ConfirmationModal
+          title={`¿Eliminar ${confirmDelete.type === 'insumo' ? 'Insumo' : 'Servicio'}?`}
+          message={`¿Estás seguro que deseas eliminar "${confirmDelete.nombre}"? Esta acción no se puede deshacer.`}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   )
 }

@@ -9,17 +9,16 @@
     "dev": "concurrently -k \"npm run vite\" \"npm run electron:dev\"",
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-    "build": "vite build && electron-builder",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "build": "vite build && electron-builder"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
     "date-fns": "^4.1.0",
     "jsbarcode": "^3.11.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.2.0"
+    "react-router-dom": "^7.2.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",

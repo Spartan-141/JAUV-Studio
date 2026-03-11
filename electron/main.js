@@ -38,8 +38,8 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  initDb();
+app.whenReady().then(async () => {
+  await initDb();
 
   // Register all IPC handlers
   require('./database/handlers/config');

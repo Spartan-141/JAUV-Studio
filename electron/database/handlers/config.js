@@ -2,17 +2,17 @@
 const { ipcMain } = require('electron');
 const { getDb } = require('../db');
 
-ipcMain.handle('config:get', (_e, clave) => {
-  const row = getDb().prepare('SELECT valor FROM configuracion WHERE clave = ?').get(clave);
+ipcMain.handle('config:get', async (_e, clave) => {
+  const row = await getDb().get('SELECT valor FROM configuracion WHERE clave = ?', clave);
   return row ? row.valor : null;
 });
 
-ipcMain.handle('config:getAll', () => {
-  const rows = getDb().prepare('SELECT clave, valor FROM configuracion').all();
+ipcMain.handle('config:getAll', async () => {
+  const rows = await getDb().all('SELECT clave, valor FROM configuracion');
   return Object.fromEntries(rows.map(r => [r.clave, r.valor]));
 });
 
-ipcMain.handle('config:set', (_e, clave, valor) => {
-  getDb().prepare('INSERT OR REPLACE INTO configuracion (clave, valor) VALUES (?, ?)').run(clave, String(valor));
+ipcMain.handle('config:set', async (_e, clave, valor) => {
+  await getDb().run('INSERT OR REPLACE INTO configuracion (clave, valor) VALUES (?, ?)', [clave, String(valor)]);
   return true;
 });
