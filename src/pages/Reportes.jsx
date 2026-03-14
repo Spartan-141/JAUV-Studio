@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { LuTrendingUp, LuHistory, LuPackage, LuDollarSign, LuBanknote, LuSmartphone, LuLandmark, LuChevronDown, LuChevronUp, LuCreditCard, LuCalendarDays, LuLock, LuCalendarClock, LuRefreshCw, LuCircleCheck, LuChartColumn } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -6,10 +7,10 @@ import ConfirmationModal from '../components/ConfirmationModal.jsx'
 import AlertModal from '../components/AlertModal.jsx'
 
 const METODO_LABEL = {
-  efectivo_usd: '💵 Efectivo USD',
-  efectivo_ves: '💴 Bs. Efectivo',
-  pago_movil:   '📱 Pago Móvil',
-  transferencia:'🏦 Transferencia',
+  efectivo_usd: <><LuDollarSign className="inline mb-1" /> Efectivo USD</>,
+  efectivo_ves: <><LuBanknote className="inline mb-1" /> Bs. Efectivo</>,
+  pago_movil:   <><LuSmartphone className="inline mb-1" /> Pago Móvil</>,
+  transferencia:<><LuLandmark className="inline mb-1" /> Transferencia</>,
 }
 
 // ── Stat card ──────────────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ function MetodosTable({ pagos, abonos }) {
 
   return (
     <div className="card p-5">
-      <h2 className="font-semibold text-white mb-3">💳 Ingresos por Método</h2>
+      <h2 className="font-semibold text-white mb-3 flex items-center gap-2"><LuCreditCard className="text-accent-green" /> Ingresos por Método</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(METODO_LABEL).map(([key, label]) => {
           const v = combined[key] || { usd: 0, ves: 0 }
@@ -66,7 +67,7 @@ function VentaRow({ v, fmt }) {
         <td className="text-right font-semibold text-white">{fmt(v.total_usd)}</td>
         <td className="text-right text-accent-green">{fmt(pagado)}</td>
         <td className="text-right">{v.saldo_pendiente_usd > 0 ? <span className="text-red-400">{fmt(v.saldo_pendiente_usd)}</span> : <span className="text-gray-500">—</span>}</td>
-        <td className="text-center text-gray-500 text-xs">{open ? '▲' : '▼'}</td>
+        <td className="text-center text-gray-500">{open ? <LuChevronUp /> : <LuChevronDown />}</td>
       </tr>
       {open && (
         <tr>
@@ -307,16 +308,16 @@ export default function Reportes() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">📊 Reportes</h1>
+          <h1 className="page-title flex items-center gap-2"><LuChartColumn className="text-brand-400" /> Reportes</h1>
           <p className="text-sm text-gray-500 capitalize">{fechaHoyLabel} · Tasa: Bs. {Number(tasa).toFixed(2)}/$</p>
         </div>
         {activeTab === 'hoy' && hoy && (
           <button
             onClick={() => setShowConfirmCerrar(true)}
             disabled={cerrando}
-            className={hoy.cerrado ? 'btn-secondary' : 'btn-danger'}
+            className={`flex items-center gap-2 ${hoy.cerrado ? 'btn-secondary' : 'btn-danger'}`}
           >
-            {hoy.cerrado ? '🔄 Actualizar Cierre' : '🔒 Cerrar Día'}
+            {hoy.cerrado ? <><LuRefreshCw className={cerrando ? 'animate-spin' : ''} /> Actualizar Cierre</> : <><LuLock /> Cerrar Día</>}
           </button>
         )}
       </div>
@@ -325,22 +326,22 @@ export default function Reportes() {
       <div className="flex gap-1 bg-surface-800 rounded-xl p-1 w-fit border border-white/5 mb-5">
         <button
           onClick={() => setActiveTab('hoy')}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'hoy' ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'hoy' ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-400 hover:text-white hover:bg-surface-700/50'}`}
         >
-          📊 Reporte del Día
+          <LuChartColumn /> Reporte del Día
         </button>
         <button
           onClick={() => { setActiveTab('historial'); loadHistorial() }}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'historial' ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'historial' ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-400 hover:text-white hover:bg-surface-700/50'}`}
         >
-          📅 Historial Cerrado
-          {historial.length > 0 && <span className="ml-2 bg-white/10 rounded-full px-2 text-xs">{historial.length}</span>}
+          <LuCalendarClock /> Historial Cerrado
+          {historial.length > 0 && <span className="bg-white/10 rounded-full px-2 text-xs">{historial.length}</span>}
         </button>
         <button
           onClick={() => { setActiveTab('inventario'); loadInventario() }}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'inventario' ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'inventario' ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-400 hover:text-white hover:bg-surface-700/50'}`}
         >
-          📦 Inventario
+          <LuPackage /> Inventario
         </button>
       </div>
 
@@ -349,7 +350,7 @@ export default function Reportes() {
         <div>
           {hoy?.cerrado && (
             <div className="flex items-center gap-2 bg-surface-700/50 border border-white/10 rounded-xl px-4 py-2.5 mb-4 text-sm text-gray-400">
-              <span>✅</span>
+              <LuCircleCheck className="text-accent-green" />
               <span>Último cierre guardado el <strong className="text-white">{hoy?.cerrado_en?.slice(0, 16)}</strong> con tasa Bs. {Number(hoy?.tasa_cierre).toFixed(2)}/$. Si llegaron ventas después, usa <strong className="text-white">Actualizar Cierre</strong>.</span>
             </div>
           )}

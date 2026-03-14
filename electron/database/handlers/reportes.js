@@ -201,3 +201,60 @@ ipcMain.handle('reportes:inventario', async (_e, tasa) => {
 
   return { stats, bajo_stock };
 });
+
+// ── dashboard:metrics — gets extended metrics for the new dashboard ───────────
+ipcMain.handle('dashboard:metrics', async () => {
+  const db = getDb();
+  
+  // 1. Sales Trend (Last 7 Days)
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  const sevenDaysAgo = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} 00:00:00`;
+  
+  const ventas_semana = await db.all(`
+    SELECT date(fecha) as fecha, SUM(total_usd) as total
+    FROM ventas
+    WHERE fecha >= ?
+    GROUP BY date(fecha)
+    ORDER BY fecha ASC
+  `, [sevenDaysAgo]);
+
+  // Fill missing days with 0 for a continuous chart
+  const trend = [];
+  const current = new Date(d);
+  current.setHours(0,0,0,0);
+  const end = new Date();
+  while (current <= end) {
+    const curStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+    const found = ventas_semana.find(v => v.fecha === curStr);
+    trend.push({ fecha: curStr, total: found ? found.total : 0 });
+    current.setDate(current.getDate() + 1);
+  }
+
+  // 2. Top Products (By Quantity Sold, last 30 days)
+  const monthAgoD = new Date();
+  monthAgoD.setDate(monthAgoD.getDate() - 30);
+  const thirtyDaysAgo = `${monthAgoD.getFullYear()}-${String(monthAgoD.getMonth() + 1).padStart(2, '0')}-${String(monthAgoD.getDate()).padStart(2, '0')} 00:00:00`;
+
+  const top_productos = await db.all(`
+    SELECT dv.ref_id, dv.nombre, SUM(dv.cantidad) as total_vendido, SUM(dv.subtotal_usd) as ingresos
+    FROM detalle_venta dv
+    JOIN ventas v ON v.id = dv.venta_id
+    WHERE dv.tipo = 'producto' AND v.fecha >= ?
+    GROUP BY dv.ref_id, dv.nombre
+    ORDER BY total_vendido DESC
+    LIMIT 5
+  `, [thirtyDaysAgo]);
+
+  // 3. Top Debtors (Active credits)
+  const top_deudores = await db.all(`
+    SELECT cliente_nombre as nombre, SUM(saldo_pendiente_usd) as deuda
+    FROM ventas
+    WHERE estado = 'credito' AND saldo_pendiente_usd > 0 AND cliente_nombre != ''
+    GROUP BY cliente_nombre
+    ORDER BY deuda DESC
+    LIMIT 5
+  `);
+
+  return { trend, top_productos, top_deudores };
+});

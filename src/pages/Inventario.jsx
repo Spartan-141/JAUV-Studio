@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { LuPlus, LuPencil, LuTrash2, LuSearch, LuTrendingDown, LuTriangleAlert } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import JsBarcode from 'jsbarcode'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
@@ -283,19 +284,22 @@ export default function Inventario() {
           {bajoStockCount > 0 && (
             <button onClick={() => setFilterBajoStock(v => !v)}
               className={`badge-red text-sm px-3 py-2 rounded-lg cursor-pointer ${filterBajoStock ? 'ring-2 ring-red-400' : ''}`}>
-              ⚠️ {bajoStockCount} bajo stock
+              <LuTriangleAlert className="text-sm" /> {bajoStockCount} bajo stock
             </button>
           )}
-          <button onClick={() => { setSelected(null); setModal('crear') }} className="btn-primary">
-            + Nuevo Producto
+          <button onClick={() => { setSelected(null); setModal('crear') }} className="btn-primary flex items-center gap-2">
+            <LuPlus /> Nuevo Producto
           </button>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 items-center">
-        <input className="input flex-1 max-w-sm" placeholder="🔍 Buscar por nombre, código o marca..."
-          value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="relative flex-1 max-w-sm">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><LuSearch /></span>
+          <input className="input w-full pl-10" placeholder="Buscar por nombre, código o marca..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
         <select className="select w-48" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
           <option value="">Todas las categorías</option>
           {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -358,14 +362,14 @@ export default function Inventario() {
                   <td className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className={`font-bold text-sm ${bajo ? 'text-red-400' : 'text-white'}`}>{p.stock_actual}</span>
-                      {bajo && <span className="badge-red text-xs">⚠️ mín {p.stock_minimo}</span>}
+                      {bajo && <span className="badge-red text-xs transition-colors flex items-center gap-1"><LuTriangleAlert /> mín {p.stock_minimo}</span>}
                     </div>
                   </td>
                   <td>
                     <div className="flex gap-1 justify-center">
-                      <button onClick={() => { setSelected(p); setModal('editar') }} className="btn-ghost btn-sm">✏️</button>
-                      <button onClick={() => { setSelected(p); setModal('merma') }} className="btn-ghost btn-sm" title="Registrar merma">📉</button>
-                      <button onClick={() => deleteProd(p)} className="btn-ghost btn-sm text-red-400">🗑️</button>
+                      <button onClick={() => { setSelected(p); setModal('editar') }} className="btn-ghost btn-sm text-brand-400" title="Editar"><LuPencil /></button>
+                      <button onClick={() => { setSelected(p); setModal('merma') }} className="btn-ghost btn-sm text-accent-yellow" title="Registrar merma"><LuTrendingDown /></button>
+                      <button onClick={() => deleteProd(p)} className="btn-ghost btn-sm text-red-400" title="Eliminar"><LuTrash2 /></button>
                     </div>
                   </td>
                 </tr>

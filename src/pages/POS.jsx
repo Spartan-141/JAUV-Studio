@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { LuBanknote, LuSmartphone, LuLandmark, LuSearch, LuUser, LuTrash2, LuPlus, LuMinus, LuCreditCard, LuX, LuDollarSign, LuShoppingCart, LuCircleCheck, LuClipboardList } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
 import AlertModal from '../components/AlertModal.jsx'
 
 const METODOS = [
-  { key: 'efectivo_usd', label: '$ Efectivo USD', icon: '💵' },
-  { key: 'efectivo_ves', label: 'Bs. Efectivo', icon: '💴' },
-  { key: 'pago_movil',   label: 'Bs. Pago Móvil', icon: '📱' },
-  { key: 'transferencia',label: 'Bs. Transferencia', icon: '🏦' },
+  { key: 'efectivo_usd', label: '$ Efectivo USD', icon: <LuDollarSign /> },
+  { key: 'efectivo_ves', label: 'Bs. Efectivo', icon: <LuBanknote /> },
+  { key: 'pago_movil',   label: 'Bs. Pago Móvil', icon: <LuSmartphone /> },
+  { key: 'transferencia',label: 'Bs. Transferencia', icon: <LuLandmark /> },
 ]
 
 // ── Ticket printing ───────────────────────────────────────────────────────────
@@ -349,9 +350,9 @@ export default function POS() {
         <div className="flex-1 overflow-y-auto card">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-3">
-              <span className="text-5xl">🛒</span>
+              <LuShoppingCart className="text-5xl opacity-20" />
               <p>El carrito está vacío</p>
-              <p className="text-sm">Busca un producto para comenzar</p>
+              <p className="text-sm text-gray-500">Busca un producto para comenzar</p>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -405,18 +406,6 @@ export default function POS() {
             <p className="text-right text-xs text-gray-500 mt-1">Exacto: Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
           </div>
 
-        {/* Breakdown per method hint */}
-          <div className="bg-surface-700 rounded-xl p-3 space-y-1 text-xs text-gray-400">
-            <p className="font-medium text-white mb-2">A cobrar:</p>
-            {METODOS.map(m => (
-              <div key={m.key} className="flex justify-between">
-                <span>{m.icon} {m.label}:</span>
-                <span className="text-gray-300">
-                  {m.key === 'efectivo_ves' ? `Bs. ${totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}` : `$${Number(totalFinalUsd).toFixed(2)}`}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="space-y-2">
@@ -446,9 +435,11 @@ export default function POS() {
       {modal === 'ticket' && lastVenta && (
         <div className="modal-backdrop">
           <div className="modal text-center">
-            <div className="text-5xl mb-3">✅</div>
+            <LuCircleCheck className="text-6xl text-accent-green mb-4 mx-auto" />
             <h2 className="text-xl font-bold text-white mb-1">¡Venta Registrada!</h2>
-            <p className="text-gray-400 text-sm mb-6">Venta #{lastVenta.venta.id} · {lastVenta.venta.estado === 'credito' ? '📋 A crédito' : 'Pagada'}</p>
+            <p className="text-gray-400 text-sm mb-6 flex items-center justify-center gap-1.5">
+              Venta #{lastVenta.venta.id} · {lastVenta.venta.estado === 'credito' ? <><LuClipboardList className="text-accent-yellow" /> A crédito</> : 'Pagada'}
+            </p>
             <div className="flex gap-3 justify-center">
               <button onClick={()=>setModal(null)} className="btn-secondary">Cerrar</button>
               <button onClick={()=>printTicket({...lastVenta, config, tasa})} className="btn-primary">🖨️ Imprimir Ticket</button>

@@ -140,6 +140,7 @@ export default function CuentasPorCobrar() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -150,17 +151,32 @@ export default function CuentasPorCobrar() {
 
   useEffect(() => { load() }, [load])
 
-  const totalPendiente = ventas.reduce((s, v) => s + v.saldo_pendiente_usd, 0)
+  const filteredVentas = ventas.filter(v => 
+    (v.cliente_nombre || '').toLowerCase().includes(search.toLowerCase()) || 
+    v.id.toString().includes(search)
+  )
+  const totalPendiente = filteredVentas.reduce((s, v) => s + v.saldo_pendiente_usd, 0)
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header flex-wrap gap-4 items-end">
         <div>
           <h1 className="page-title">📋 Cuentas por Cobrar</h1>
-          <p className="text-sm text-gray-500">{ventas.length} créditos activos</p>
+          <p className="text-sm text-gray-500">{filteredVentas.length} créditos activos {search ? 'encontrados' : ''}</p>
         </div>
-        <div className="stat-card">
-          <p className="stat-label">Total Pendiente</p>
+        
+        <div className="flex-1 min-w-[200px] max-w-sm">
+          <input 
+            type="text" 
+            className="input" 
+            placeholder="🔍 Buscar por cliente o folio..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="stat-card whitespace-nowrap">
+          <p className="stat-label">Total Pendiente {search ? '(Filtrado)' : ''}</p>
           <p className="text-xl font-bold text-red-400">{fmt(totalPendiente)}</p>
           <p className="text-xs text-gray-500">Bs. {toVes(totalPendiente).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
         </div>
@@ -171,8 +187,8 @@ export default function CuentasPorCobrar() {
           <thead><tr><th>#</th><th>Cliente</th><th>Fecha</th><th className="text-right">Total</th><th className="text-right">Pagado</th><th className="text-right">Saldo</th><th className="text-center">Acciones</th></tr></thead>
           <tbody>
             {loading ? <tr><td colSpan={7} className="text-center py-10 text-gray-500">Cargando...</td></tr>
-              : ventas.length === 0 ? <tr><td colSpan={7} className="text-center py-10 text-gray-500">🎉 Sin cuentas pendientes</td></tr>
-                : ventas.map(v => {
+              : filteredVentas.length === 0 ? <tr><td colSpan={7} className="text-center py-10 text-gray-500">🎉 No se encontraron cuentas pendientes</td></tr>
+                : filteredVentas.map(v => {
                   const pagado = v.total_usd - v.saldo_pendiente_usd
                   const pct = ((pagado / v.total_usd) * 100).toFixed(0)
                   return (

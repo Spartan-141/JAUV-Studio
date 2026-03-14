@@ -1,5 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { LuLayoutDashboard, LuShoppingCart, LuPackage, LuPrinter, LuClipboardList, LuChartColumn, LuPencil, LuCheck, LuStore } from 'react-icons/lu'
 import { HashRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
+import SplashScreen from './components/SplashScreen.jsx'
+import logoLateral from '../img/logo_barra_lateral.png'
 import { AppProvider, useApp } from './context/AppContext.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Inventario from './pages/Inventario.jsx'
@@ -9,28 +13,20 @@ import CuentasPorCobrar from './pages/CuentasPorCobrar.jsx'
 import Reportes from './pages/Reportes.jsx'
 
 const NAV_ITEMS = [
-  { to: '/',          icon: '⚡', label: 'Dashboard' },
-  { to: '/pos',       icon: '🛒', label: 'Punto de Venta' },
-  { to: '/inventario',icon: '📦', label: 'Inventario' },
-  { to: '/copiado',   icon: '🖨️', label: 'Centro Copiado' },
-  { to: '/cuentas',   icon: '📋', label: 'Cuentas x Cobrar' },
-  { to: '/reportes',  icon: '📊', label: 'Reportes' },
+  { to: '/',          icon: <LuLayoutDashboard />, label: 'Dashboard' },
+  { to: '/pos',       icon: <LuShoppingCart />,    label: 'Punto de Venta' },
+  { to: '/inventario',icon: <LuPackage />,         label: 'Inventario' },
+  { to: '/copiado',   icon: <LuPrinter />,         label: 'Centro Copiado' },
+  { to: '/cuentas',   icon: <LuClipboardList />,   label: 'Cuentas x Cobrar' },
+  { to: '/reportes',  icon: <LuChartColumn />,     label: 'Reportes' },
 ]
 
 function Sidebar() {
   return (
     <aside className="flex flex-col w-64 bg-surface-800 border-r border-white/5 shrink-0">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-lg shadow-glow">
-            🏪
-          </div>
-          <div>
-            <p className="font-bold text-white text-sm leading-tight">JAUV Studio</p>
-            <p className="text-xs text-gray-500">Sistema POS</p>
-          </div>
-        </div>
+      <div className="px-6 py-5 border-b border-white/5 flex items-center justify-center">
+        <img src={logoLateral} alt="JAUV Studio" className="h-10 w-auto object-contain" />
       </div>
 
       {/* Navigation */}
@@ -44,7 +40,7 @@ function Sidebar() {
                   : 'text-gray-400 hover:bg-surface-700 hover:text-white'
               }`
             }>
-            <span className="text-base w-6 text-center">{icon}</span>
+            <span className="text-lg w-6 flex items-center justify-center">{icon}</span>
             <span>{label}</span>
           </NavLink>
         ))}
@@ -73,20 +69,20 @@ function ExchangeRateBar() {
       {editing ? (
         <div className="flex gap-2">
           <input
-            className="input flex-1 text-sm"
+            className="input flex-1 text-sm h-9"
             value={val}
             onChange={e => setVal(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
             autoFocus
             type="number" min="0.01" step="0.01"
           />
-          <button onClick={save} className="btn-primary btn-sm">✓</button>
+          <button onClick={save} className="btn-primary w-9 h-9 flex items-center justify-center"><LuCheck className="text-lg" /></button>
         </div>
       ) : (
         <button onClick={start}
           className="w-full flex items-center justify-between bg-brand-900/40 border border-brand-500/30 rounded-xl px-3 py-2 hover:border-brand-500 transition-colors group">
           <span className="text-white font-mono font-bold">Bs. {Number(tasa).toFixed(2)}</span>
-          <span className="text-brand-400 text-xs group-hover:text-brand-300">✏️</span>
+          <span className="text-brand-400 group-hover:text-brand-300"><LuPencil className="text-sm" /></span>
         </button>
       )}
     </div>
@@ -112,9 +108,14 @@ function Layout() {
 }
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
   return (
     <AppProvider>
       <HashRouter>
+        <AnimatePresence>
+          {isLoading && <SplashScreen key="splash" onComplete={() => setIsLoading(false)} />}
+        </AnimatePresence>
         <Layout />
       </HashRouter>
     </AppProvider>
