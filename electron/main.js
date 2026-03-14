@@ -49,8 +49,11 @@ app.whenReady().then(async () => {
   require('./database/handlers/servicios');
   require('./database/handlers/ventas');
   require('./database/handlers/cuentas');
-  require('./database/handlers/reportes');
+  const { autoClosePreviousDays } = require('./database/handlers/reportes');
   require('./database/handlers/mermas');
+
+  // Auto-close any previous days that weren't closed before the app was shut down
+  try { await autoClosePreviousDays(); } catch (e) { console.error('[Startup] Auto-close failed:', e); }
 
   createWindow();
 

@@ -123,6 +123,21 @@ async function initDb() {
         notas TEXT DEFAULT '',
         fecha TEXT DEFAULT (datetime('now','localtime'))
       );
+
+      CREATE TABLE IF NOT EXISTS cierres_dia (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL UNIQUE,
+        tasa_cierre REAL NOT NULL,
+        total_ventas INTEGER DEFAULT 0,
+        ingresos_usd REAL DEFAULT 0,
+        ingresos_ves REAL DEFAULT 0,
+        descuentos_usd REAL DEFAULT 0,
+        pendiente_cobrar_usd REAL DEFAULT 0,
+        pagos_json TEXT DEFAULT '[]',
+        abonos_json TEXT DEFAULT '[]',
+        ventas_json TEXT DEFAULT '[]',
+        cerrado_en TEXT DEFAULT (datetime('now','localtime'))
+      );
     `);
 
     // ─── Seed defaults ────────────────────────────────────────────────────────
@@ -163,6 +178,14 @@ async function initDb() {
     }
 
     await db.exec('COMMIT;');
+
+    // ─── Migrations ───────────────────────────────────────────────────────────
+    // Add ganancia_neta_usd to cierres_dia if it doesn't exist yet
+    try {
+      await db.run('ALTER TABLE cierres_dia ADD COLUMN ganancia_neta_usd REAL DEFAULT 0');
+      console.log('[DB] Migration: added ganancia_neta_usd to cierres_dia');
+    } catch (_) { /* column already exists */ }
+
     console.log('[DB] Database initialized successfully.');
     return db;
   } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
+import AlertModal from '../components/AlertModal.jsx'
 
 const METODOS = [
   { key: 'efectivo_usd', label: '$ Efectivo USD', icon: '💵' },
@@ -194,6 +195,7 @@ export default function POS() {
   const [selectedResult, setSelectedResult] = useState(null)
   const [lastVenta, setLastVenta] = useState(null)
   const [showSearch, setShowSearch] = useState(false)
+  const [alertMsg, setAlertMsg] = useState('')
   const searchRef = useRef(null)
 
   // Real-time search
@@ -219,17 +221,34 @@ export default function POS() {
     }
     setCart(prev => {
       const exists = prev.find(c => c.ref_id === item.id && c.tipo === 'producto')
-      if (exists) return prev.map(c => c.ref_id === item.id && c.tipo === 'producto'
-        ? { ...c, cantidad: c.cantidad + 1, subtotal_usd: (c.cantidad + 1) * c.precio_unitario_usd }
-        : c)
-      return [...prev, { tipo:'producto', ref_id: item.id, nombre: item.nombre, cantidad: 1, precio_unitario_usd: item.precio_venta_usd, subtotal_usd: item.precio_venta_usd }]
+      if (exists) {
+        if (exists.cantidad >= item.stock_actual) {
+          setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
+          return prev
+        }
+        return prev.map(c => c.ref_id === item.id && c.tipo === 'producto'
+          ? { ...c, cantidad: c.cantidad + 1, subtotal_usd: (c.cantidad + 1) * c.precio_unitario_usd }
+          : c)
+      }
+      if (item.stock_actual < 1) {
+        setAlertMsg(`No hay stock disponible de ${item.nombre}`)
+        return prev
+      }
+      return [...prev, { tipo:'producto', ref_id: item.id, nombre: item.nombre, cantidad: 1, precio_unitario_usd: item.precio_venta_usd, subtotal_usd: item.precio_venta_usd, stock_actual: item.stock_actual }]
     })
     setQuery(''); setResults([]); setShowSearch(false)
   }
 
   const updateQty = (idx, qty) => {
     if (qty < 1) { removeItem(idx); return }
-    setCart(prev => prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_usd: qty * c.precio_unitario_usd } : c))
+    setCart(prev => {
+      const item = prev[idx]
+      if (item.tipo === 'producto' && qty > item.stock_actual) {
+        setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
+        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_usd: item.stock_actual * c.precio_unitario_usd } : c)
+      }
+      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_usd: qty * c.precio_unitario_usd } : c)
+    })
   }
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))
   const clearCart = () => { setCart([]); setDescuento(''); setLastVenta(null) }
@@ -314,6 +333,7 @@ export default function POS() {
                   <tr key={i}>
                     <td>
                       <p className="font-medium text-white">{item.nombre}</p>
+                      {item.tipo === 'producto' && <p className="text-xs text-brand-400">Stock: {item.stock_actual}</p>}
                       {item.cantidad_hojas_gastadas > 0 && <p className="text-xs text-gray-500">{item.cantidad_hojas_gastadas} hojas gastadas</p>}
                     </td>
                     <td className="text-center">
@@ -407,6 +427,15 @@ export default function POS() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Alert Modal */}
+      {alertMsg && (
+        <AlertModal
+          title="Stock Insuficiente"
+          message={alertMsg}
+          onClose={() => setAlertMsg('')}
+        />
       )}
     </div>
   )
