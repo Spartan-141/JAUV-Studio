@@ -173,6 +173,67 @@ function DayPanel({ data, fmt, tasa, isHistorical }) {
   )
 }
 
+// ── Inventario panel ──────────────────────────────────────────────────────────
+function InventarioPanel({ reporte, fmt, tasa }) {
+  if (!reporte) return null
+  const { stats, bajo_stock } = reporte
+  return (
+    <div className="space-y-5">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Total Productos" value={stats.total_productos || 0} sub="Referencias únicas" />
+        <StatCard label="Artículos Físicos" value={stats.total_articulos || 0} sub="Unidades totales en stock" />
+        <StatCard
+          label="Inversión (Costo)"
+          value={`$${Number(stats.inversion_usd || 0).toFixed(2)}`}
+          sub={`Bs. ${Number((stats.inversion_usd || 0)*tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}
+        />
+        <StatCard
+          label="Ganancia Potencial"
+          value={`$${Number(stats.ganancia_potencial_usd || 0).toFixed(2)}`}
+          sub={`Bs. ${Number((stats.ganancia_potencial_usd || 0)*tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`}
+          green
+        />
+      </div>
+
+      {/* Low stock table */}
+      <div className="card table-wrapper mt-4">
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+          <h2 className="font-semibold text-white">⚠️ Alertas de Inventario (Bajo Stock)</h2>
+          <span className="text-xs text-gray-500">{bajo_stock.length} productos</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Producto</th>
+              <th className="text-center">Min. Sugerido</th>
+              <th className="text-center">Stock Actual</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bajo_stock.length === 0 ? (
+              <tr><td colSpan={4} className="text-center py-8 text-gray-500">Ningún producto con stock bajo</td></tr>
+            ) : (
+              bajo_stock.map(p => (
+                <tr key={p.id}>
+                  <td className="font-mono text-xs text-brand-400">{p.codigo}</td>
+                  <td>
+                    <p className="font-medium text-white">{p.nombre}</p>
+                    {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
+                  </td>
+                  <td className="text-center text-gray-400">{p.stock_minimo}</td>
+                  <td className="text-center font-bold text-red-400">{p.stock_actual}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Reportes page ─────────────────────────────────────────────────────────
 export default function Reportes() {
   const { fmt, tasa } = useApp()
@@ -190,6 +251,9 @@ export default function Reportes() {
   const [alertMsg, setAlertMsg] = useState('')
   const [activeTab, setActiveTab] = useState('hoy')
 
+  const [inventario, setInventario] = useState(null)
+  const [loadingInv, setLoadingInv] = useState(false)
+
   const loadHoy = useCallback(async () => {
     setLoading(true)
     const data = await window.api.invoke('reportes:hoy')
@@ -201,6 +265,13 @@ export default function Reportes() {
     const rows = await window.api.invoke('reportes:historial')
     setHistorial(rows)
   }, [])
+
+  const loadInventario = useCallback(async () => {
+    setLoadingInv(true)
+    const data = await window.api.invoke('reportes:inventario', tasa)
+    setInventario(data)
+    setLoadingInv(false)
+  }, [tasa])
 
   useEffect(() => {
     loadHoy()
@@ -265,6 +336,12 @@ export default function Reportes() {
           📅 Historial Cerrado
           {historial.length > 0 && <span className="ml-2 bg-white/10 rounded-full px-2 text-xs">{historial.length}</span>}
         </button>
+        <button
+          onClick={() => { setActiveTab('inventario'); loadInventario() }}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'inventario' ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}
+        >
+          📦 Inventario
+        </button>
       </div>
 
       {/* ── HOY TAB ── */}
@@ -320,6 +397,21 @@ export default function Reportes() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ── INVENTARIO TAB ── */}
+      {activeTab === 'inventario' && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-white">📦 Estado del Inventario</h2>
+            <button onClick={loadInventario} className="btn-secondary btn-sm">🔄 Recargar</button>
+          </div>
+          {loadingInv ? (
+            <div className="card-p text-center py-12 text-gray-500">Analizando inventario...</div>
+          ) : inventario ? (
+            <InventarioPanel reporte={inventario} fmt={fmt} tasa={tasa} />
+          ) : null}
         </div>
       )}
 

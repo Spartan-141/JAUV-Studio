@@ -52,16 +52,25 @@ ipcMain.handle('productos:create', async (_e, data) => {
   const db = getDb();
   const codigo = (data.codigo && data.codigo.trim()) ? data.codigo.trim() : await ensureUniqueCode(db);
   const info = await db.run(`
-    INSERT INTO productos (codigo, nombre, marca, precio_compra_usd, precio_venta_usd, stock_actual, stock_minimo, categoria_id, descripcion)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO productos (
+      codigo, nombre, marca,
+      precio_compra_usd, precio_venta_usd,
+      precio_compra_ves, precio_venta_ves,
+      moneda_precio,
+      stock_actual, stock_minimo, categoria_id, descripcion
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     codigo,
     data.nombre,
     data.marca || '',
-    data.precio_compra_usd,
-    data.precio_venta_usd,
-    data.stock_actual,
-    data.stock_minimo,
+    data.precio_compra_usd || 0,
+    data.precio_venta_usd || 0,
+    data.precio_compra_ves || 0,
+    data.precio_venta_ves || 0,
+    data.moneda_precio || 'usd',
+    data.stock_actual || 0,
+    data.stock_minimo || 0,
     data.categoria_id || null,
     data.descripcion || ''
   ]);
@@ -74,6 +83,8 @@ ipcMain.handle('productos:update', async (_e, { id, ...data }) => {
     UPDATE productos SET
       codigo = ?, nombre = ?, marca = ?,
       precio_compra_usd = ?, precio_venta_usd = ?,
+      precio_compra_ves = ?, precio_venta_ves = ?,
+      moneda_precio = ?,
       stock_actual = ?, stock_minimo = ?,
       categoria_id = ?, descripcion = ?
     WHERE id = ?
@@ -81,8 +92,11 @@ ipcMain.handle('productos:update', async (_e, { id, ...data }) => {
     data.codigo,
     data.nombre,
     data.marca,
-    data.precio_compra_usd,
-    data.precio_venta_usd,
+    data.precio_compra_usd || 0,
+    data.precio_venta_usd || 0,
+    data.precio_compra_ves || 0,
+    data.precio_venta_ves || 0,
+    data.moneda_precio || 'usd',
     data.stock_actual,
     data.stock_minimo,
     data.categoria_id,

@@ -47,6 +47,9 @@ async function initDb() {
         marca TEXT DEFAULT '',
         precio_compra_usd REAL NOT NULL DEFAULT 0,
         precio_venta_usd  REAL NOT NULL DEFAULT 0,
+        precio_compra_ves REAL NOT NULL DEFAULT 0,
+        precio_venta_ves  REAL NOT NULL DEFAULT 0,
+        moneda_precio     TEXT DEFAULT 'usd',
         stock_actual      INTEGER NOT NULL DEFAULT 0,
         stock_minimo      INTEGER NOT NULL DEFAULT 0,
         categoria_id      INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
@@ -185,6 +188,14 @@ async function initDb() {
       await db.run('ALTER TABLE cierres_dia ADD COLUMN ganancia_neta_usd REAL DEFAULT 0');
       console.log('[DB] Migration: added ganancia_neta_usd to cierres_dia');
     } catch (_) { /* column already exists */ }
+
+    // Add dual-pricing columns to productos if they don't exist
+    try {
+      await db.run('ALTER TABLE productos ADD COLUMN precio_compra_ves REAL NOT NULL DEFAULT 0');
+      await db.run('ALTER TABLE productos ADD COLUMN precio_venta_ves REAL NOT NULL DEFAULT 0');
+      await db.run("ALTER TABLE productos ADD COLUMN moneda_precio TEXT DEFAULT 'usd'");
+      console.log('[DB] Migration: added dual-pricing columns to productos');
+    } catch (_) { /* columns already exist */ }
 
     console.log('[DB] Database initialized successfully.');
     return db;

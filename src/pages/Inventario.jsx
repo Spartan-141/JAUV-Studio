@@ -18,18 +18,21 @@ function BarcodeImg({ code }) {
 
 // ── Product form modal ──────────────────────────────────────────────────────
 function ProductoModal({ producto, categorias, onClose, onSave }) {
-  const { fmt } = useApp()
+  const { fmt, tasa } = useApp()
   const blank = {
-    codigo: '', nombre: '', marca: '', precio_compra_usd: '', precio_venta_usd: '',
+    codigo: '', nombre: '', marca: '',
+    precio_compra_usd: '', precio_venta_usd: '',
+    precio_compra_ves: '', precio_venta_ves: '',
+    moneda_precio: 'usd',
     stock_actual: 0, stock_minimo: 0, categoria_id: '', descripcion: '',
   }
   const [form, setForm] = useState(producto ? { ...producto, categoria_id: producto.categoria_id || '' } : blank)
   const [saving, setSaving] = useState(false)
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
-  const margin = form.precio_venta_usd && form.precio_compra_usd
-    ? (((form.precio_venta_usd - form.precio_compra_usd) / form.precio_compra_usd) * 100).toFixed(1)
-    : null
+  const margin = form.moneda_precio === 'usd'
+    ? (form.precio_venta_usd && form.precio_compra_usd ? (((form.precio_venta_usd - form.precio_compra_usd) / form.precio_compra_usd) * 100).toFixed(1) : null)
+    : (form.precio_venta_ves && form.precio_compra_ves ? (((form.precio_venta_ves - form.precio_compra_ves) / form.precio_compra_ves) * 100).toFixed(1) : null)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -37,8 +40,10 @@ function ProductoModal({ producto, categorias, onClose, onSave }) {
     try {
       const data = {
         ...form,
-        precio_compra_usd: parseFloat(form.precio_compra_usd) || 0,
-        precio_venta_usd: parseFloat(form.precio_venta_usd) || 0,
+        precio_compra_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_compra_usd) || 0 : (parseFloat(form.precio_compra_ves) || 0) / tasa,
+        precio_venta_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_venta_usd) || 0 : (parseFloat(form.precio_venta_ves) || 0) / tasa,
+        precio_compra_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_compra_ves) || 0 : (parseFloat(form.precio_compra_usd) || 0) * tasa,
+        precio_venta_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_venta_ves) || 0 : (parseFloat(form.precio_venta_usd) || 0) * tasa,
         stock_actual: parseInt(form.stock_actual) || 0,
         stock_minimo: parseInt(form.stock_minimo) || 0,
         categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
@@ -81,15 +86,52 @@ function ProductoModal({ producto, categorias, onClose, onSave }) {
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
-            <div>
-              <label className="label">Precio Compra (USD)</label>
-              <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra_usd} onChange={e => set('precio_compra_usd', e.target.value)} />
+            
+            <div className="col-span-2 pt-2 pb-1 border-t border-white/5">
+              <label className="label">Moneda del Precio Fijo</label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => set('moneda_precio', 'usd')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'usd' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>$ USD (Dólares)</button>
+                <button type="button" onClick={() => set('moneda_precio', 'ves')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'ves' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>Bs. VES (Bolívares)</button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                La moneda seleccionada no cambiará automáticamente con la tasa del día.
+              </p>
             </div>
-            <div>
-              <label className="label">Precio Venta (USD)</label>
-              <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta_usd} onChange={e => set('precio_venta_usd', e.target.value)} />
-              {margin && <p className="text-xs mt-1 text-accent-green">Margen: {margin}%</p>}
-            </div>
+
+            {form.moneda_precio === 'usd' ? (
+              <>
+                <div>
+                  <label className="label">Precio Compra ($ USD)</label>
+                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra_usd} onChange={e => set('precio_compra_usd', e.target.value)} />
+                  <p className="text-xs text-gray-500 mt-1">≈ Bs. {((parseFloat(form.precio_compra_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <label className="label">Precio Venta ($ USD)</label>
+                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta_usd} onChange={e => set('precio_venta_usd', e.target.value)} />
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-500">≈ Bs. {((parseFloat(form.precio_venta_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+                    {margin && <p className="text-xs font-semibold text-accent-green">Margen: {margin}%</p>}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="label">Precio Compra (Bs. VES)</label>
+                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra_ves} onChange={e => set('precio_compra_ves', e.target.value)} />
+                  <p className="text-xs text-gray-500 mt-1">≈ $ {((parseFloat(form.precio_compra_ves) || 0) / tasa).toFixed(4)}</p>
+                </div>
+                <div>
+                  <label className="label">Precio Venta (Bs. VES)</label>
+                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta_ves} onChange={e => set('precio_venta_ves', e.target.value)} />
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-500">≈ $ {((parseFloat(form.precio_venta_ves) || 0) / tasa).toFixed(4)}</p>
+                    {margin && <p className="text-xs font-semibold text-accent-green">Margen: {margin}%</p>}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
               <label className="label">Stock Actual</label>
               <input className="input" type="number" min="0" value={form.stock_actual} onChange={e => set('stock_actual', e.target.value)} />
@@ -301,9 +343,18 @@ export default function Inventario() {
                     {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
                   </td>
                   <td><span className="badge-blue">{p.categoria_nombre || '—'}</span></td>
-                  <td className="text-right text-gray-400">{fmt(p.precio_compra_usd)}</td>
-                  <td className="text-right font-semibold text-white">{fmt(p.precio_venta_usd)}</td>
-                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(p.precio_venta_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</td>
+                  <td className="text-right text-gray-400">
+                    {p.moneda_precio === 'ves' ? `Bs. ${Number(p.precio_compra_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}` : fmt(p.precio_compra_usd)}
+                  </td>
+                  <td className="text-right font-semibold text-white">
+                    {fmt(p.precio_venta_usd)}
+                  </td>
+                  <td className="text-right text-sm">
+                    {p.moneda_precio === 'ves' 
+                      ? <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">Fijo: Bs. {Number(p.precio_venta_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                      : <span className="text-gray-400">≈ Bs. {toVes(p.precio_venta_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+                    }
+                  </td>
                   <td className="text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className={`font-bold text-sm ${bajo ? 'text-red-400' : 'text-white'}`}>{p.stock_actual}</span>

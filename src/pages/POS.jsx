@@ -54,8 +54,7 @@ function printTicket({ venta, detalles, pagos, config, tasa }) {
 }
 
 // ── Payment Modal ─────────────────────────────────────────────────────────────
-function PagoModal({ cart, totalFinal, tasa, config, onClose, onConfirm }) {
-  const { toVes } = useApp()
+function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onConfirm }) {
   const [pagos, setPagos] = useState({ efectivo_usd: '', efectivo_ves: '', pago_movil: '', transferencia: '' })
   const [clienteNombre, setClienteNombre] = useState('')
   const [saving, setSaving] = useState(false)
@@ -66,10 +65,21 @@ function PagoModal({ cart, totalFinal, tasa, config, onClose, onConfirm }) {
     if (key === 'efectivo_usd') return acc + num
     return acc + (num / tasa)
   }, 0)
+  
+  const totalPagadoVes = Object.entries(pagos).reduce((acc, [key, val]) => {
+    if (!val || val === '') return acc
+    const num = parseFloat(val) || 0
+    if (key === 'efectivo_usd') return acc + (num * tasa)
+    return acc + num
+  }, 0)
 
-  const falta = Math.max(0, totalFinal - totalPagadoUsd)
-  const vuelto = totalPagadoUsd > totalFinal ? totalPagadoUsd - totalFinal : 0
-  const esCredito = falta > 0.005
+  const faltaUsd = Math.max(0, totalFinal - totalPagadoUsd)
+  const faltaVes = Math.max(0, exactTotalVes - totalPagadoVes)
+  
+  const vueltoUsd = totalPagadoUsd > totalFinal ? totalPagadoUsd - totalFinal : 0
+  const vueltoVes = totalPagadoVes > exactTotalVes ? totalPagadoVes - exactTotalVes : 0
+  
+  const esCredito = faltaUsd > 0.005
 
   const confirm = async () => {
     if (esCredito && !clienteNombre.trim()) { alert('Se requiere nombre del cliente para ventas a crédito'); return }
@@ -87,7 +97,7 @@ function PagoModal({ cart, totalFinal, tasa, config, onClose, onConfirm }) {
           }
         })
 
-      await onConfirm({ pagosArr, clienteNombre, esCredito, falta })
+      await onConfirm({ pagosArr, clienteNombre, esCredito, falta: faltaUsd })
     } finally { setSaving(false) }
   }
 
@@ -102,7 +112,7 @@ function PagoModal({ cart, totalFinal, tasa, config, onClose, onConfirm }) {
         <div className="bg-brand-900/30 border border-brand-500/30 rounded-xl p-4 mb-5 text-center">
           <p className="text-gray-400 text-sm">Total a cobrar</p>
           <p className="text-3xl font-bold text-white">${Number(totalFinal).toFixed(2)}</p>
-          <p className="text-sm text-gray-400">Bs. {toVes(totalFinal).toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+          <p className="text-sm text-gray-400">Bs. {exactTotalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -117,9 +127,9 @@ function PagoModal({ cart, totalFinal, tasa, config, onClose, onConfirm }) {
 
         {/* Summary */}
         <div className="bg-surface-700 rounded-xl p-4 space-y-2 text-sm mb-4">
-          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">${totalPagadoUsd.toFixed(2)}</span></div>
-          {falta > 0.005 && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">${falta.toFixed(2)} / Bs.{(falta*tasa).toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>}
-          {vuelto > 0.005 && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">${vuelto.toFixed(2)}</span></div>}
+          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">${totalPagadoUsd.toFixed(2)} / Bs.{totalPagadoVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>
+          {faltaUsd > 0.005 && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">${faltaUsd.toFixed(2)} / Bs.{faltaVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>}
+          {vueltoUsd > 0.005 && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">${vueltoUsd.toFixed(2)} / Bs.{vueltoVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>}
         </div>
 
         {esCredito && (
@@ -234,7 +244,18 @@ export default function POS() {
         setAlertMsg(`No hay stock disponible de ${item.nombre}`)
         return prev
       }
-      return [...prev, { tipo:'producto', ref_id: item.id, nombre: item.nombre, cantidad: 1, precio_unitario_usd: item.precio_venta_usd, subtotal_usd: item.precio_venta_usd, stock_actual: item.stock_actual }]
+      return [...prev, { 
+        tipo: 'producto', 
+        ref_id: item.id, 
+        nombre: item.nombre, 
+        cantidad: 1, 
+        precio_unitario_usd: item.precio_venta_usd,
+        subtotal_usd: item.precio_venta_usd, 
+        precio_unitario_ves: item.precio_venta_ves,
+        subtotal_ves: item.precio_venta_ves,
+        moneda_precio: item.moneda_precio,
+        stock_actual: item.stock_actual 
+      }]
     })
     setQuery(''); setResults([]); setShowSearch(false)
   }
@@ -245,24 +266,31 @@ export default function POS() {
       const item = prev[idx]
       if (item.tipo === 'producto' && qty > item.stock_actual) {
         setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
-        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_usd: item.stock_actual * c.precio_unitario_usd } : c)
+        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_usd: item.stock_actual * c.precio_unitario_usd, subtotal_ves: item.stock_actual * (c.precio_unitario_ves || 0) } : c)
       }
-      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_usd: qty * c.precio_unitario_usd } : c)
+      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_usd: qty * c.precio_unitario_usd, subtotal_ves: qty * (c.precio_unitario_ves || 0) } : c)
     })
   }
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))
   const clearCart = () => { setCart([]); setDescuento(''); setLastVenta(null) }
 
-  const subtotal = cart.reduce((s, c) => s + c.subtotal_usd, 0)
-  const descVal = parseFloat(descuento) || 0
-  const totalFinal = Math.max(0, subtotal - descVal)
+  // We need an exact VES subtotal to avoid floating point issues when dealing with "VES-first" products
+  const subtotal_usd = cart.reduce((s, c) => s + c.subtotal_usd, 0)
+  const subtotal_ves = cart.reduce((s, c) => s + (c.moneda_precio === 'ves' ? c.subtotal_ves : c.subtotal_usd * tasa), 0)
+
+  // Descuentos apply proportionately
+  const descValUsd = parseFloat(descuento) || 0
+  const ratioDescuento = subtotal_usd > 0 ? descValUsd / subtotal_usd : 0
+  const descValVes = subtotal_ves * ratioDescuento
+  
+  const totalFinalUsd = Math.max(0, subtotal_usd - descValUsd)
+  const totalFinalVes = Math.max(0, subtotal_ves - descValVes)
 
   const confirmarVenta = async ({ pagosArr, clienteNombre, esCredito, falta }) => {
-    const totalPagado = pagosArr.reduce((s, p) => s + p.monto_usd, 0)
     const cabecera = {
-      subtotal_usd: subtotal,
-      descuento_otorgado_usd: descVal,
-      total_usd: totalFinal,
+      subtotal_usd: subtotal_usd,
+      descuento_otorgado_usd: descValUsd,
+      total_usd: totalFinalUsd,
       tasa_cambio: tasa,
       estado: esCredito ? 'credito' : 'pagada',
       cliente_nombre: clienteNombre || '',
@@ -361,30 +389,30 @@ export default function POS() {
         <h2 className="font-bold text-lg text-white">Resumen</h2>
 
         <div className="space-y-3 flex-1">
-          <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal_usd)}</span></div>
 
           <div>
             <label className="label">Descuento (USD)</label>
             <input className="input" type="number" min="0" step="0.01" placeholder="0.00"
-              value={descuento} onChange={e=> { const v=e.target.value; if(parseFloat(v)||0<=subtotal) setDescuento(v) }} />
+              value={descuento} onChange={e=> { const v=e.target.value; if(parseFloat(v)||0<=subtotal_usd) setDescuento(v) }} />
           </div>
 
           <div className="border-t border-white/10 pt-3">
             <div className="flex justify-between items-baseline">
               <span className="text-gray-300 font-medium">Total Final:</span>
-              <span className="text-2xl font-bold text-white">{fmt(totalFinal)}</span>
+              <span className="text-2xl font-bold text-white">{fmt(totalFinalUsd)}</span>
             </div>
-            <p className="text-right text-xs text-gray-500 mt-1">Bs. {toVes(totalFinal).toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+            <p className="text-right text-xs text-gray-500 mt-1">Exacto: Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
           </div>
 
-          {/* Breakdown per method hint */}
+        {/* Breakdown per method hint */}
           <div className="bg-surface-700 rounded-xl p-3 space-y-1 text-xs text-gray-400">
-            <p className="font-medium text-white mb-2">Equivalencias:</p>
+            <p className="font-medium text-white mb-2">A cobrar:</p>
             {METODOS.map(m => (
               <div key={m.key} className="flex justify-between">
                 <span>{m.icon} {m.label}:</span>
                 <span className="text-gray-300">
-                  {m.key === 'efectivo_ves' ? `Bs. ${toVes(totalFinal).toLocaleString('es-VE',{maximumFractionDigits:2})}` : `$${Number(totalFinal).toFixed(2)}`}
+                  {m.key === 'efectivo_ves' ? `Bs. ${totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}` : `$${Number(totalFinalUsd).toFixed(2)}`}
                 </span>
               </div>
             ))}
@@ -394,7 +422,7 @@ export default function POS() {
         <div className="space-y-2">
           <button onClick={() => cart.length && setModal('pago')} disabled={cart.length === 0}
             className="btn-success btn-lg w-full">
-            💳 COBRAR {cart.length > 0 ? fmt(totalFinal) : ''}
+            💳 COBRAR {cart.length > 0 ? fmt(totalFinalUsd) : ''}
           </button>
           <button onClick={clearCart} disabled={cart.length===0} className="btn-ghost w-full text-sm">
             🗑️ Limpiar carrito
@@ -410,7 +438,7 @@ export default function POS() {
 
       {/* Payment modal */}
       {modal === 'pago' && (
-        <PagoModal cart={cart} totalFinal={totalFinal} tasa={tasa} config={config}
+        <PagoModal cart={cart} totalFinal={totalFinalUsd} exactTotalVes={totalFinalVes} tasa={tasa} config={config}
           onClose={()=>setModal(null)} onConfirm={confirmarVenta} />
       )}
 

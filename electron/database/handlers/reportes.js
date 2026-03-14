@@ -168,3 +168,36 @@ ipcMain.handle('reportes:cierre_detalle', async (_e, fecha) => {
     ventas: JSON.parse(row.ventas_json || '[]'),
   };
 });
+
+// ── reportes:inventario — gets inventory metrics ──────────────────────────────
+ipcMain.handle('reportes:inventario', async (_e, tasa) => {
+  const db = getDb();
+  const t = parseFloat(tasa) || 1;
+  const stats = await db.get(`
+    SELECT
+      COUNT(id) AS total_productos,
+      SUM(stock_actual) AS total_articulos,
+      SUM(
+        CASE WHEN moneda_precio = 'ves'
+          THEN (precio_compra_ves / ?) * stock_actual
+          ELSE precio_compra_usd * stock_actual
+        END
+      ) AS inversion_usd,
+      SUM(
+        CASE WHEN moneda_precio = 'ves'
+          THEN ((precio_venta_ves - precio_compra_ves) / ?) * stock_actual
+          ELSE (precio_venta_usd - precio_compra_usd) * stock_actual
+        END
+      ) AS ganancia_potencial_usd
+    FROM productos
+  `, [t, t]);
+
+  const bajo_stock = await db.all(`
+    SELECT id, codigo, nombre, marca, stock_actual, stock_minimo
+    FROM productos
+    WHERE stock_actual <= stock_minimo
+    ORDER BY stock_actual ASC, nombre ASC
+  `);
+
+  return { stats, bajo_stock };
+});
