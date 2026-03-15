@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { LuTrendingUp, LuBadgePercent, LuClock, LuDollarSign, LuPackage, LuUsers, LuCircleCheck } from 'react-icons/lu'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 
 export default function Dashboard() {
   const { fmt, toVes, tasa } = useApp()
@@ -11,6 +11,17 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [ventas, setVentas] = useState([])
   const [loading, setLoading] = useState(true)
+  const chartRef = useRef(null)
+  const [chartWidth, setChartWidth] = useState(0)
+
+  useEffect(() => {
+    if (!chartRef.current) return
+    const observer = new ResizeObserver(([entry]) => {
+      setChartWidth(Math.floor(entry.contentRect.width))
+    })
+    observer.observe(chartRef.current)
+    return () => observer.disconnect()
+  }, [loading])
 
   useEffect(() => {
     Promise.all([
@@ -94,23 +105,21 @@ export default function Dashboard() {
                 </div>
                 <div className="bg-brand-500/20 text-brand-300 p-2 rounded-lg"><LuTrendingUp /></div>
               </div>
-              <div className="flex-1 min-h-[250px] w-full">
-                {metrics?.trend && metrics.trend.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={metrics.trend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="rgb(var(--tw-brand-500))" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="rgb(var(--tw-brand-500))" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis dataKey="fecha" tickFormatter={(str) => format(parseISO(str), 'd MMM', {locale: es})} stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                      <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`$${v}`} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" dataKey="total" stroke="rgb(var(--tw-brand-400))" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+              <div ref={chartRef} style={{ height: 260, width: '100%', position: 'relative' }}>
+                {metrics?.trend && metrics.trend.length > 0 && chartWidth > 0 ? (
+                  <AreaChart width={chartWidth} height={260} data={metrics.trend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                    <XAxis dataKey="fecha" tickFormatter={(str) => format(parseISO(str), 'd MMM', {locale: es})} stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`$${v}`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="total" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                  </AreaChart>
                 ) : (
                   <div className="h-full flex items-center justify-center text-gray-500 text-sm">Sin datos suficientes</div>
                 )}
