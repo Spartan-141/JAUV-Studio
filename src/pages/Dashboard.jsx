@@ -24,6 +24,10 @@ export default function Dashboard() {
   }, [loading])
 
   useEffect(() => {
+    if (!window.api) {
+      setLoading(false)
+      return
+    }
     Promise.all([
       window.api.invoke('reportes:hoy'),
       window.api.invoke('ventas:ultimas', 6),

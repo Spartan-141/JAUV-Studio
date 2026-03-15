@@ -256,6 +256,10 @@ export default function Reportes() {
   const [loadingInv, setLoadingInv] = useState(false)
 
   const loadHoy = useCallback(async () => {
+    if (!window.api) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const data = await window.api.invoke('reportes:hoy')
     setHoy(data)
@@ -263,11 +267,13 @@ export default function Reportes() {
   }, [])
 
   const loadHistorial = useCallback(async () => {
+    if (!window.api) return
     const rows = await window.api.invoke('reportes:historial')
     setHistorial(rows)
   }, [])
 
   const loadInventario = useCallback(async () => {
+    if (!window.api) return
     setLoadingInv(true)
     const data = await window.api.invoke('reportes:inventario', tasa)
     setInventario(data)
@@ -282,6 +288,7 @@ export default function Reportes() {
   }, [loadHoy, loadHistorial])
 
   const handleSelectFecha = async (fecha) => {
+    if (!window.api) return
     setSelectedFecha(fecha)
     if (!fecha) { setDetalle(null); return }
     setLoadingDetalle(true)

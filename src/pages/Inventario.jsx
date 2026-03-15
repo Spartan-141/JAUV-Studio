@@ -235,6 +235,10 @@ export default function Inventario() {
   const [confirmDelete, setConfirmDelete] = useState(null) // null | producto
 
   const load = useCallback(async () => {
+    if (!window.api) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const [prods, cats] = await Promise.all([
       window.api.invoke('productos:list', {

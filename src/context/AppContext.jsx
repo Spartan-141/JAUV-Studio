@@ -8,6 +8,10 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   const loadConfig = useCallback(async () => {
+    if (!window.api) {
+      setLoading(false)
+      return
+    }
     try {
       const cfg = await window.api.invoke('config:getAll')
       setConfig(cfg)

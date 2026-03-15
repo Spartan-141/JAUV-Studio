@@ -7,7 +7,7 @@
   "license": "ISC",
   "scripts": {
     "dev": "concurrently -k \"npm run vite\" \"npm run electron:dev\"",
-    "vite": "vite",
+    "vite": "vite --host",
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build": "vite build && electron-builder"
   },
@@ -41,6 +41,9 @@
     "productName": "JAUV Studio POS",
     "directories": {
       "output": "dist-electron"
+    },
+    "win": {
+      "icon": "public/img/icono.png"
     },
     "files": [
       "dist/**/*",

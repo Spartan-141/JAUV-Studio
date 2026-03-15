@@ -211,7 +211,7 @@ export default function POS() {
 
   // Real-time search
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return }
+    if (!window.api || !query.trim()) { setResults([]); return }
     const timer = setTimeout(async () => {
       const [prods, srvs] = await Promise.all([
         window.api.invoke('productos:search', query),
