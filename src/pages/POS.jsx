@@ -116,7 +116,7 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
           <p className="text-sm text-gray-400">Bs. {exactTotalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           {METODOS.map(m => (
             <div key={m.key}>
               <label className="label">{m.icon} {m.label}</label>
@@ -141,7 +141,7 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
           </div>
         )}
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-end flex-wrap">
           <button onClick={onClose} className="btn-secondary">Cancelar</button>
           <button onClick={confirm} disabled={saving || (totalPagadoUsd < 0.005 && !esCredito)}
             className="btn-success btn-lg">
@@ -207,11 +207,12 @@ export default function POS() {
   const [lastVenta, setLastVenta] = useState(null)
   const [showSearch, setShowSearch] = useState(false)
   const [alertMsg, setAlertMsg] = useState('')
+  const [summaryOpen, setSummaryOpen] = useState(false)
   const searchRef = useRef(null)
 
   // Real-time search
   useEffect(() => {
-    if (!window.api || !query.trim()) { setResults([]); return }
+    if (!query.trim()) { setResults([]); return }
     const timer = setTimeout(async () => {
       const [prods, srvs] = await Promise.all([
         window.api.invoke('productos:search', query),
@@ -275,11 +276,9 @@ export default function POS() {
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))
   const clearCart = () => { setCart([]); setDescuento(''); setLastVenta(null) }
 
-  // We need an exact VES subtotal to avoid floating point issues when dealing with "VES-first" products
   const subtotal_usd = cart.reduce((s, c) => s + c.subtotal_usd, 0)
   const subtotal_ves = cart.reduce((s, c) => s + (c.moneda_precio === 'ves' ? c.subtotal_ves : c.subtotal_usd * tasa), 0)
 
-  // Descuentos apply proportionately
   const descValUsd = parseFloat(descuento) || 0
   const ratioDescuento = subtotal_usd > 0 ? descValUsd / subtotal_usd : 0
   const descValVes = subtotal_ves * ratioDescuento
@@ -307,12 +306,11 @@ export default function POS() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-full overflow-hidden">
       {/* Left: search + cart */}
-      <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden">
-        <div className="flex items-center gap-4">
-          <h1 className="page-title whitespace-nowrap">🛒 Punto de Venta</h1>
-          {/* Tasa display */}
+      <div className="flex-1 flex flex-col p-3 sm:p-5 gap-3 sm:gap-4 overflow-hidden min-h-0">
+        <div className="flex items-center gap-3">
+          <h1 className="page-title whitespace-nowrap">🛒 <span className="hidden sm:inline">Punto de </span>Venta</h1>
           <div className="ml-auto bg-surface-700 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-gray-400">
             Tasa: <span className="font-mono text-brand-400 font-bold">Bs. {Number(tasa).toFixed(2)}</span>
           </div>
@@ -321,7 +319,7 @@ export default function POS() {
         {/* Search */}
         <div className="relative">
           <input ref={searchRef} className="input text-base pr-10"
-            placeholder="🔍 Buscar producto o servicio (nombre / código)..."
+            placeholder="🔍 Buscar producto o servicio..."
             value={query} onChange={e => setQuery(e.target.value)}
             onFocus={() => results.length && setShowSearch(true)}
             onBlur={() => setTimeout(() => setShowSearch(false), 200)} />
@@ -347,7 +345,7 @@ export default function POS() {
         </div>
 
         {/* Cart */}
-        <div className="flex-1 overflow-y-auto card">
+        <div className="flex-1 overflow-y-auto card min-h-0">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-3">
               <LuShoppingCart className="text-5xl opacity-20" />
@@ -356,26 +354,32 @@ export default function POS() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead><tr><th>Producto / Servicio</th><th className="text-center w-28">Cant.</th><th className="text-right">P. Unit</th><th className="text-right">Subtotal</th><th></th></tr></thead>
+              <thead><tr>
+                <th>Producto / Servicio</th>
+                <th className="text-center w-24 sm:w-28">Cant.</th>
+                <th className="text-right hidden sm:table-cell">P. Unit</th>
+                <th className="text-right">Subtotal</th>
+                <th></th>
+              </tr></thead>
               <tbody>
                 {cart.map((item, i) => (
                   <tr key={i}>
                     <td>
-                      <p className="font-medium text-white">{item.nombre}</p>
+                      <p className="font-medium text-white text-xs sm:text-sm">{item.nombre}</p>
                       {item.tipo === 'producto' && <p className="text-xs text-brand-400">Stock: {item.stock_actual}</p>}
                       {item.cantidad_hojas_gastadas > 0 && <p className="text-xs text-gray-500">{item.cantidad_hojas_gastadas} hojas gastadas</p>}
                     </td>
                     <td className="text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                         <button onClick={()=>updateQty(i,item.cantidad-1)} className="btn-ghost btn-sm w-6 h-6 p-0">-</button>
                         <input type="number" min="1" value={item.cantidad}
                           onChange={e=>updateQty(i,parseInt(e.target.value)||1)}
-                          className="input-sm w-14 text-center" />
+                          className="input-sm w-10 sm:w-14 text-center" />
                         <button onClick={()=>updateQty(i,item.cantidad+1)} className="btn-ghost btn-sm w-6 h-6 p-0">+</button>
                       </div>
                     </td>
-                    <td className="text-right text-gray-300">{fmt(item.precio_unitario_usd)}</td>
-                    <td className="text-right font-semibold text-white">{fmt(item.subtotal_usd)}</td>
+                    <td className="text-right text-gray-300 hidden sm:table-cell">{fmt(item.precio_unitario_usd)}</td>
+                    <td className="text-right font-semibold text-white text-xs sm:text-sm">{fmt(item.subtotal_usd)}</td>
                     <td><button onClick={()=>removeItem(i)} className="btn-ghost btn-sm text-red-400">✕</button></td>
                   </tr>
                 ))}
@@ -385,37 +389,55 @@ export default function POS() {
         </div>
       </div>
 
-      {/* Right: totals panel */}
-      <div className="w-80 bg-surface-800 border-l border-white/5 flex flex-col p-5 gap-4">
-        <h2 className="font-bold text-lg text-white">Resumen</h2>
-
-        <div className="space-y-3 flex-1">
-          <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal_usd)}</span></div>
-
-          <div>
-            <label className="label">Descuento (USD)</label>
-            <input className="input" type="number" min="0" step="0.01" placeholder="0.00"
-              value={descuento} onChange={e=> { const v=e.target.value; if(parseFloat(v)||0<=subtotal_usd) setDescuento(v) }} />
+      {/* Right: totals panel — always visible on md+, collapsible on mobile */}
+      <div className={`md:w-80 bg-surface-800 border-t md:border-t-0 md:border-l border-white/5 md:flex md:flex-col md:p-5 md:gap-4 ${
+        cart.length > 0 ? '' : 'hidden md:flex'
+      }`}>
+        {/* Mobile toggle header */}
+        <button
+          className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 w-full"
+          onClick={() => setSummaryOpen(o => !o)}
+        >
+          <span className="font-bold text-white">Resumen del pedido</span>
+          <div className="flex items-center gap-3">
+            <span className="text-brand-400 font-bold">{fmt(totalFinalUsd)}</span>
+            <span className="text-gray-400 text-xs">{summaryOpen ? '▲' : '▼'}</span>
           </div>
+        </button>
 
-          <div className="border-t border-white/10 pt-3">
-            <div className="flex justify-between items-baseline">
-              <span className="text-gray-300 font-medium">Total Final:</span>
-              <span className="text-2xl font-bold text-white">{fmt(totalFinalUsd)}</span>
+        {/* Panel content */}
+        <div className={`flex flex-col gap-4 p-4 md:p-0 md:flex-1 ${
+          summaryOpen ? 'flex' : 'hidden md:flex'
+        }`}>
+          <h2 className="font-bold text-lg text-white hidden md:block">Resumen</h2>
+
+          <div className="space-y-3 md:flex-1">
+            <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal_usd)}</span></div>
+
+            <div>
+              <label className="label">Descuento (USD)</label>
+              <input className="input" type="number" min="0" step="0.01" placeholder="0.00"
+                value={descuento} onChange={e=>{ const v=e.target.value; if(parseFloat(v)||0<=subtotal_usd) setDescuento(v) }} />
             </div>
-            <p className="text-right text-xs text-gray-500 mt-1">Exacto: Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+
+            <div className="border-t border-white/10 pt-3">
+              <div className="flex justify-between items-baseline">
+                <span className="text-gray-300 font-medium">Total Final:</span>
+                <span className="text-2xl font-bold text-white">{fmt(totalFinalUsd)}</span>
+              </div>
+              <p className="text-right text-xs text-gray-500 mt-1">Exacto: Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+            </div>
           </div>
 
-        </div>
-
-        <div className="space-y-2">
-          <button onClick={() => cart.length && setModal('pago')} disabled={cart.length === 0}
-            className="btn-success btn-lg w-full">
-            💳 COBRAR {cart.length > 0 ? fmt(totalFinalUsd) : ''}
-          </button>
-          <button onClick={clearCart} disabled={cart.length===0} className="btn-ghost w-full text-sm">
-            🗑️ Limpiar carrito
-          </button>
+          <div className="space-y-2">
+            <button onClick={() => cart.length && setModal('pago')} disabled={cart.length === 0}
+              className="btn-success btn-lg w-full">
+              💳 COBRAR {cart.length > 0 ? fmt(totalFinalUsd) : ''}
+            </button>
+            <button onClick={clearCart} disabled={cart.length===0} className="btn-ghost w-full text-sm">
+              🗑️ Limpiar carrito
+            </button>
+          </div>
         </div>
       </div>
 
@@ -440,7 +462,7 @@ export default function POS() {
             <p className="text-gray-400 text-sm mb-6 flex items-center justify-center gap-1.5">
               Venta #{lastVenta.venta.id} · {lastVenta.venta.estado === 'credito' ? <><LuClipboardList className="text-accent-yellow" /> A crédito</> : 'Pagada'}
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex gap-3 justify-center flex-wrap">
               <button onClick={()=>setModal(null)} className="btn-secondary">Cerrar</button>
               <button onClick={()=>printTicket({...lastVenta, config, tasa})} className="btn-primary">🖨️ Imprimir Ticket</button>
             </div>

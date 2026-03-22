@@ -170,13 +170,15 @@ export default function CentroCopiado() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 w-fit border border-white/5">
+      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 border border-white/5 overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
         {['insumos', 'servicios'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
             {t === 'insumos' ? '📄 Insumos (Papel)' : '📋 Catálogo de Servicios'}
           </button>
         ))}
+        </div>
       </div>
 
       {tab === 'insumos' && (

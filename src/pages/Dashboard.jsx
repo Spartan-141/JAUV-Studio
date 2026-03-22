@@ -24,10 +24,6 @@ export default function Dashboard() {
   }, [loading])
 
   useEffect(() => {
-    if (!window.api) {
-      setLoading(false)
-      return
-    }
     Promise.all([
       window.api.invoke('reportes:hoy'),
       window.api.invoke('ventas:ultimas', 6),
@@ -61,15 +57,15 @@ export default function Dashboard() {
   return (
     <div className="page pb-10 space-y-6">
       {/* HEADER */}
-      <div className="flex items-center justify-between pb-2 border-b border-white/5">
+      <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Hello, JAUV Studio</h1>
-          <p className="text-sm text-gray-500 capitalize">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}</p>
+          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Hello, JAUV Studio</h1>
+          <p className="text-xs sm:text-sm text-gray-500 capitalize">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}</p>
         </div>
-        <div className="flex items-center gap-3 bg-surface-800/80 backdrop-blur pb-2 pt-2 px-5 rounded-2xl border border-white/5 shadow-xl">
+        <div className="flex items-center gap-3 bg-surface-800/80 backdrop-blur py-2 px-4 rounded-2xl border border-white/5 shadow-xl">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Tasa Oficial BCV</span>
-            <span className="font-mono font-bold text-lg text-brand-400">Bs. {Number(tasa).toFixed(2)}</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Tasa BCV</span>
+            <span className="font-mono font-bold text-base sm:text-lg text-brand-400">Bs. {Number(tasa).toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -79,7 +75,7 @@ export default function Dashboard() {
       ) : (
         <>
           {/* STAT CARDS */}
-          <div className="grid grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
             {STATS.map(s => (
               <div key={s.label} className={`relative overflow-hidden rounded-2xl p-5 border border-white/5 bg-gradient-to-br ${s.bg} backdrop-blur-md shadow-lg group`}>
                 <div className="absolute -right-6 -top-6 text-9xl opacity-5 group-hover:scale-110 transition-transform duration-500">
@@ -99,9 +95,9 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* MAIN CHART - SALES TREND */}
-            <div className="col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
+            <div className="md:col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-lg font-bold text-white">Rendimiento Semanal</h2>
@@ -131,7 +127,7 @@ export default function Dashboard() {
             </div>
 
             {/* TOP PRODUCTS PIE / BAR */}
-            <div className="col-span-1 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
+            <div className="md:col-span-1 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white">Top Productos</h2>
@@ -162,9 +158,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              {/* RECENT SALES */}
-             <div className="col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl">
+             <div className="md:col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl">
                <h2 className="text-lg font-bold text-white mb-4">Transacciones Recientes</h2>
                {ventas.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-8">Sin ventas registradas hoy</p>
@@ -194,7 +190,7 @@ export default function Dashboard() {
              </div>
 
              {/* DEUDORES */}
-             <div className="col-span-1 border border-white/5 p-6 rounded-2xl bg-gradient-to-b from-surface-800/80 to-surface-800/30 backdrop-blur-md shadow-xl flex flex-col">
+             <div className="md:col-span-1 border border-white/5 p-6 rounded-2xl bg-gradient-to-b from-surface-800/80 to-surface-800/30 backdrop-blur-md shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white">Cuentas Pendientes</h2>

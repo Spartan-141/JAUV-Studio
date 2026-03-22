@@ -235,10 +235,6 @@ export default function Inventario() {
   const [confirmDelete, setConfirmDelete] = useState(null) // null | producto
 
   const load = useCallback(async () => {
-    if (!window.api) {
-      setLoading(false)
-      return
-    }
     setLoading(true)
     const [prods, cats] = await Promise.all([
       window.api.invoke('productos:list', {
@@ -284,7 +280,7 @@ export default function Inventario() {
           <h1 className="page-title">📦 Inventario</h1>
           <p className="text-sm text-gray-500">{productos.length} productos · {categorias.length} categorías</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {bajoStockCount > 0 && (
             <button onClick={() => setFilterBajoStock(v => !v)}
               className={`badge-red text-sm px-3 py-2 rounded-lg cursor-pointer ${filterBajoStock ? 'ring-2 ring-red-400' : ''}`}>
@@ -292,19 +288,19 @@ export default function Inventario() {
             </button>
           )}
           <button onClick={() => { setSelected(null); setModal('crear') }} className="btn-primary flex items-center gap-2">
-            <LuPlus /> Nuevo Producto
+            <LuPlus /> <span className="hidden sm:inline">Nuevo </span>Producto
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><LuSearch /></span>
-          <input className="input w-full pl-10" placeholder="Buscar por nombre, código o marca..."
+          <input className="input w-full pl-10" placeholder="Buscar por nombre, código..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="select w-48" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+        <select className="select min-w-[140px] flex-1 sm:flex-none sm:w-48" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
           <option value="">Todas las categorías</option>
           {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
@@ -314,8 +310,8 @@ export default function Inventario() {
         </div>
 
         {/* Quick add category */}
-        <div className="flex gap-2 ml-auto">
-          <input className="input w-36" placeholder="Nueva categoría" value={newCat} onChange={e => setNewCat(e.target.value)}
+        <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+          <input className="input flex-1 sm:w-36" placeholder="Nueva categoría" value={newCat} onChange={e => setNewCat(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addCat()} />
           <button className="btn-secondary btn-sm" onClick={addCat}>+ Cat</button>
         </div>

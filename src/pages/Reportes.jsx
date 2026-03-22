@@ -119,7 +119,7 @@ function DayPanel({ data, fmt, tasa, isHistorical }) {
   return (
     <div className="space-y-5">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
         <StatCard label="N° Ventas" value={data.total_ventas || 0} />
         <StatCard
           label="Ingresos USD"
@@ -181,7 +181,7 @@ function InventarioPanel({ reporte, fmt, tasa }) {
   return (
     <div className="space-y-5">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Total Productos" value={stats.total_productos || 0} sub="Referencias únicas" />
         <StatCard label="Artículos Físicos" value={stats.total_articulos || 0} sub="Unidades totales en stock" />
         <StatCard
@@ -256,10 +256,6 @@ export default function Reportes() {
   const [loadingInv, setLoadingInv] = useState(false)
 
   const loadHoy = useCallback(async () => {
-    if (!window.api) {
-      setLoading(false)
-      return
-    }
     setLoading(true)
     const data = await window.api.invoke('reportes:hoy')
     setHoy(data)
@@ -267,13 +263,11 @@ export default function Reportes() {
   }, [])
 
   const loadHistorial = useCallback(async () => {
-    if (!window.api) return
     const rows = await window.api.invoke('reportes:historial')
     setHistorial(rows)
   }, [])
 
   const loadInventario = useCallback(async () => {
-    if (!window.api) return
     setLoadingInv(true)
     const data = await window.api.invoke('reportes:inventario', tasa)
     setInventario(data)
@@ -330,7 +324,8 @@ export default function Reportes() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 w-fit border border-white/5 mb-5">
+      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 border border-white/5 mb-5 overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
         <button
           onClick={() => setActiveTab('hoy')}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'hoy' ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-400 hover:text-white hover:bg-surface-700/50'}`}
@@ -350,6 +345,7 @@ export default function Reportes() {
         >
           <LuPackage /> Inventario
         </button>
+        </div>
       </div>
 
       {/* ── HOY TAB ── */}

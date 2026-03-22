@@ -12,7 +12,9 @@
     "build": "vite build && electron-builder"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "date-fns": "^4.1.0",
+    "express": "^5.2.1",
     "framer-motion": "^12.36.0",
     "jsbarcode": "^3.11.6",
     "react": "^19.0.0",

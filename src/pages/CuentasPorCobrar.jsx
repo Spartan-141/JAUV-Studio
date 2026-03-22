@@ -86,7 +86,7 @@ function DetalleModal({ ventaId, onClose }) {
           <h2 className="text-lg font-bold">Venta #{data.id} — {data.cliente_nombre}</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-sm">
           <div className="bg-surface-700 rounded-xl p-3">
             <p className="text-gray-400 text-xs">Total</p>
             <p className="font-bold text-white">{fmt(data.total_usd)}</p>

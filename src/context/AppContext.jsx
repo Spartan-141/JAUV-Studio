@@ -1,5 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
+if (typeof window !== 'undefined' && !window.api) {
+  window.api = {
+    invoke: async (channel, ...args) => {
+      try {
+        const res = await fetch('/api/invoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel, args })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        return data.result;
+      } catch (err) {
+        console.error(`[API Polyfill] Error on channel ${channel}:`, err);
+        throw err;
+      }
+    }
+  };
+  console.log('[API Polyfill] Running in browser mode. HTTP bridge attached.');
+}
+
 const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
@@ -8,10 +32,6 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   const loadConfig = useCallback(async () => {
-    if (!window.api) {
-      setLoading(false)
-      return
-    }
     try {
       const cfg = await window.api.invoke('config:getAll')
       setConfig(cfg)
