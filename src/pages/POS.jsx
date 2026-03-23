@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { LuBanknote, LuSmartphone, LuLandmark, LuSearch, LuUser, LuTrash2, LuPlus, LuMinus, LuCreditCard, LuX, LuDollarSign, LuShoppingCart, LuCircleCheck, LuClipboardList } from 'react-icons/lu'
+import { LuBanknote, LuSmartphone, LuLandmark, LuSearch, LuUser, LuTrash2, LuPlus, LuMinus, LuCreditCard, LuX, LuDollarSign, LuShoppingCart, LuCircleCheck, LuClipboardList, LuCamera } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
 import AlertModal from '../components/AlertModal.jsx'
+import ScannerModal from '../components/ScannerModal.jsx'
 
 const METODOS = [
   { key: 'efectivo_usd', label: '$ Efectivo USD', icon: <LuDollarSign /> },
@@ -215,6 +216,7 @@ export default function POS() {
   const [showSearch, setShowSearch] = useState(false)
   const [alertMsg, setAlertMsg] = useState('')
   const [summaryOpen, setSummaryOpen] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const searchRef = useRef(null)
 
   // Real-time search
@@ -267,6 +269,17 @@ export default function POS() {
       }]
     })
     setQuery(''); setResults([]); setShowSearch(false)
+  }
+
+  const handleScan = async (code) => {
+    // Exact match search for the barcode
+    const prods = await window.api.invoke('productos:search', code)
+    const exactMatch = prods.find(p => p.codigo === code)
+    if (exactMatch) {
+      addToCart({ ...exactMatch, _type: 'producto' })
+    } else {
+      setAlertMsg(`No se encontró ningún producto con el código: ${code}`)
+    }
   }
 
   const updateQty = (idx, qty) => {
@@ -324,13 +337,18 @@ export default function POS() {
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <input ref={searchRef} className="input text-base pr-10"
-            placeholder="🔍 Buscar producto o servicio..."
-            value={query} onChange={e => setQuery(e.target.value)}
-            onFocus={() => results.length && setShowSearch(true)}
-            onBlur={() => setTimeout(() => setShowSearch(false), 200)} />
-          {query && <button className="absolute right-3 top-2.5 text-gray-400 hover:text-white" onClick={()=>{setQuery('');setResults([])}}>✕</button>}
+        <div className="flex gap-2 relative">
+          <div className="relative flex-1">
+            <input ref={searchRef} className="input text-base pr-10 w-full"
+              placeholder="🔍 Buscar producto o servicio..."
+              value={query} onChange={e => setQuery(e.target.value)}
+              onFocus={() => results.length && setShowSearch(true)}
+              onBlur={() => setTimeout(() => setShowSearch(false), 200)} />
+            {query && <button className="absolute right-3 top-2.5 text-gray-400 hover:text-white" onClick={()=>{setQuery('');setResults([])}}>✕</button>}
+          </div>
+          <button onClick={() => setScannerOpen(true)} className="btn-secondary px-4 shrink-0" title="Escanear Código">
+            <LuCamera className="text-xl text-brand-400" />
+          </button>
           {showSearch && results.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-1 bg-surface-700 border border-white/10 rounded-xl shadow-2xl z-30 max-h-72 overflow-y-auto animate-slide-in">
               {results.map((r, i) => (
@@ -480,9 +498,20 @@ export default function POS() {
       {/* Alert Modal */}
       {alertMsg && (
         <AlertModal
-          title="Stock Insuficiente"
+          title="Aviso"
           message={alertMsg}
           onClose={() => setAlertMsg('')}
+        />
+      )}
+
+      {/* Barcode Scanner Modal */}
+      {scannerOpen && (
+        <ScannerModal
+          onDetected={(code) => {
+            setScannerOpen(false)
+            handleScan(code)
+          }}
+          onClose={() => setScannerOpen(false)}
         />
       )}
     </div>
