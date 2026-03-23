@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
 
@@ -51,14 +51,20 @@ function InsumoModal({ insumo, onClose, onSave }) {
 
 // ── Servicio Modal ────────────────────────────────────────────────────────────
 function ServicioModal({ servicio, insumos, onClose, onSave }) {
-  const blank = { nombre: '', precio_usd: '', insumo_id: '', activo: 1 }
+  const { tasa } = useApp()
+  const blank = { nombre: '', precio_usd: '', precio_ves: '', moneda_precio: 'usd', insumo_id: '', activo: 1 }
   const [form, setForm] = useState(servicio ? { ...servicio, insumo_id: servicio.insumo_id || '' } : blank)
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
-    const data = { ...form, precio_usd: parseFloat(form.precio_usd) || 0, insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null }
+    const data = { 
+      ...form, 
+      precio_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_usd) || 0 : (parseFloat(form.precio_ves) || 0) / tasa,
+      precio_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_ves) || 0 : (parseFloat(form.precio_usd) || 0) * tasa,
+      insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null 
+    }
     try {
       if (servicio?.id) await window.api.invoke('servicios:update', { id: servicio.id, ...data })
       else await window.api.invoke('servicios:create', data)
@@ -74,7 +80,29 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
         </div>
         <form onSubmit={submit} className="space-y-4">
           <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
-          <div><label className="label">Precio (USD)</label><input className="input" type="number" min="0" step="0.01" required value={form.precio_usd} onChange={e => set('precio_usd', e.target.value)} /></div>
+
+          <div className="pt-2 pb-1 border-t border-white/5">
+            <label className="label">Moneda del Precio Fijo</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => set('moneda_precio', 'usd')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'usd' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>$ USD</button>
+              <button type="button" onClick={() => set('moneda_precio', 'ves')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'ves' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>Bs. VES</button>
+            </div>
+          </div>
+
+          {form.moneda_precio === 'usd' ? (
+            <div>
+              <label className="label">Precio Fijo ($ USD)</label>
+              <input className="input" type="number" min="0" step="0.01" required value={form.precio_usd} onChange={e => set('precio_usd', e.target.value)} />
+              <p className="text-xs text-gray-500 mt-1">≈ Bs. {((parseFloat(form.precio_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+            </div>
+          ) : (
+            <div>
+              <label className="label">Precio Fijo (Bs. VES)</label>
+              <input className="input" type="number" min="0" step="0.01" required value={form.precio_ves} onChange={e => set('precio_ves', e.target.value)} />
+              <p className="text-xs text-gray-500 mt-1">≈ $ {((parseFloat(form.precio_ves) || 0) / tasa).toFixed(4)}</p>
+            </div>
+          )}
+
           <div><label className="label">Insumo (papel que consume)</label>
             <select className="select" value={form.insumo_id} onChange={e => set('insumo_id', e.target.value)}>
               <option value="">Ninguno</option>
@@ -130,7 +158,7 @@ function AjusteModal({ insumo, onClose, onSave }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CentroCopiado() {
-  const { fmt, toVes } = useApp()
+  const { fmt, toVes, tasa } = useApp()
   const [tab, setTab] = useState('insumos')
   const [insumos, setInsumos] = useState([])
   const [servicios, setServicios] = useState([])
@@ -160,6 +188,30 @@ export default function CentroCopiado() {
     load()
   }
 
+  // Memoized table rows — only recalculate when data or tasa changes, not on modal open/close
+  const servicioRows = useMemo(() => servicios.map(s => (
+    <tr key={s.id}>
+      <td className="font-medium text-white">{s.nombre}</td>
+      <td className="text-gray-400 text-xs">{s.insumo_nombre || '—'}</td>
+      <td className="text-right font-semibold text-white">
+        {s.moneda_precio === 'ves' ? <span className="text-gray-400 text-sm font-normal">≈ {fmt((s.precio_ves || 0) / tasa)}</span> : fmt(s.precio_usd)}
+      </td>
+      <td className="text-right text-sm">
+        {s.moneda_precio === 'ves'
+          ? <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">Fijo: Bs. {Number(s.precio_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+          : <span className="text-gray-400 text-xs">≈ Bs. {toVes(s.precio_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
+        }
+      </td>
+      <td><span className={s.activo ? 'badge-green' : 'badge-red'}>{s.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td>
+        <div className="flex gap-1">
+          <button onClick={() => { setSelected(s); setModal('servicio') }} className="btn-ghost btn-sm">✏️</button>
+          <button onClick={() => deleteItem('servicio', s.id, s.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  )), [servicios, tasa, fmt, toVes])
+
   return (
     <div className="page">
       <div className="page-header">
@@ -170,7 +222,7 @@ export default function CentroCopiado() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 border border-white/5 overflow-x-auto">
+      <div className="shrink-0 bg-surface-800 rounded-xl p-1 border border-white/5 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
         {['insumos', 'servicios'].map(t => (
           <button key={t} onClick={() => setTab(t)}
@@ -222,21 +274,7 @@ export default function CentroCopiado() {
             <tbody>
               {servicios.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-10 text-gray-500">Sin servicios registrados</td></tr>
-              ) : servicios.map(s => (
-                <tr key={s.id}>
-                  <td className="font-medium text-white">{s.nombre}</td>
-                  <td className="text-gray-400 text-xs">{s.insumo_nombre || '—'}</td>
-                  <td className="text-right font-semibold text-white">{fmt(s.precio_usd)}</td>
-                  <td className="text-right text-gray-300 text-xs">Bs. {toVes(s.precio_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</td>
-                  <td><span className={s.activo ? 'badge-green' : 'badge-red'}>{s.activo ? 'Activo' : 'Inactivo'}</span></td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button onClick={() => { setSelected(s); setModal('servicio') }} className="btn-ghost btn-sm">✏️</button>
-                      <button onClick={() => deleteItem('servicio', s.id, s.nombre)} className="btn-ghost btn-sm text-red-400">🗑️</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : servicioRows}
             </tbody>
           </table>
         </div>

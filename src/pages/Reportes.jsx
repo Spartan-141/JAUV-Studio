@@ -324,7 +324,7 @@ export default function Reportes() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface-800 rounded-xl p-1 border border-white/5 mb-5 overflow-x-auto">
+      <div className="shrink-0 bg-surface-800 rounded-xl p-1 border border-white/5 mb-5 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
         <button
           onClick={() => setActiveTab('hoy')}

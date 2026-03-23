@@ -155,17 +155,24 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
 
 // ── Copy service line entry ───────────────────────────────────────────────────
 function ServicioCopioModal({ servicio, onClose, onAdd }) {
-  const { fmt, toVes } = useApp()
+  const { fmt, tasa } = useApp()
   const [cant, setCant] = useState(1)
   const [hojas, setHojas] = useState(1)
-  const subtotal = Number(servicio.precio_usd) * cant
+  
+  const isVes = servicio.moneda_precio === 'ves'
+  const subtotal_usd = isVes ? (servicio.precio_ves / tasa) * cant : servicio.precio_usd * cant
+  const subtotal_ves = isVes ? servicio.precio_ves * cant : subtotal_usd * tasa
 
   const add = () => onAdd({
     tipo: 'servicio', ref_id: servicio.id,
     nombre: servicio.nombre, cantidad: parseInt(cant),
     cantidad_hojas_gastadas: parseInt(hojas),
-    precio_unitario_usd: servicio.precio_usd,
-    subtotal_usd: subtotal, insumo_id: servicio.insumo_id,
+    precio_unitario_usd: isVes ? (servicio.precio_ves / tasa) : servicio.precio_usd,
+    subtotal_usd: subtotal_usd,
+    precio_unitario_ves: servicio.precio_ves || 0,
+    subtotal_ves: subtotal_ves,
+    moneda_precio: servicio.moneda_precio || 'usd',
+    insumo_id: servicio.insumo_id,
   })
 
   return (
@@ -182,8 +189,8 @@ function ServicioCopioModal({ servicio, onClose, onAdd }) {
             <input className="input" type="number" min="1" value={hojas} onChange={e=>setHojas(e.target.value)} />
             <p className="text-xs text-gray-500 mt-1">Se cobran {cant} copias pero se descuentan {hojas} hojas del inventario.</p></div>
           <div className="bg-surface-700 rounded-xl p-3 text-sm">
-            <div className="flex justify-between"><span className="text-gray-400">Subtotal:</span><span className="font-bold text-white">{fmt(subtotal)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">En Bs.:</span><span className="text-gray-300">Bs. {toVes(subtotal).toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Subtotal:</span><span className="font-bold text-white">{fmt(subtotal_usd)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">En Bs.:</span><span className="text-gray-300">Bs. {subtotal_ves.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>
           </div>
           <div className="flex justify-end gap-3">
             <button onClick={onClose} className="btn-secondary">Cancelar</button>

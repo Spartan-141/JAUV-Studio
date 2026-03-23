@@ -12,16 +12,16 @@ ipcMain.handle('servicios:list', async () => {
 
 ipcMain.handle('servicios:create', async (_e, data) => {
   const info = await getDb().run(`
-    INSERT INTO servicios (nombre, precio_usd, insumo_id)
-    VALUES (?, ?, ?)
-  `, [data.nombre, data.precio_usd, data.insumo_id || null]);
+    INSERT INTO servicios (nombre, precio_usd, precio_ves, moneda_precio, insumo_id)
+    VALUES (?, ?, ?, ?, ?)
+  `, [data.nombre, data.precio_usd || 0, data.precio_ves || 0, data.moneda_precio || 'usd', data.insumo_id || null]);
   return { id: info.lastID };
 });
 
 ipcMain.handle('servicios:update', async (_e, { id, ...data }) => {
   await getDb().run(`
-    UPDATE servicios SET nombre=?, precio_usd=?, insumo_id=?, activo=? WHERE id=?
-  `, [data.nombre, data.precio_usd, data.insumo_id || null, data.activo !== undefined ? data.activo : 1, id]);
+    UPDATE servicios SET nombre=?, precio_usd=?, precio_ves=?, moneda_precio=?, insumo_id=?, activo=? WHERE id=?
+  `, [data.nombre, data.precio_usd || 0, data.precio_ves || 0, data.moneda_precio || 'usd', data.insumo_id || null, data.activo !== undefined ? data.activo : 1, id]);
   return true;
 });
 

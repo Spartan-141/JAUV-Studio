@@ -70,6 +70,8 @@ async function initDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL UNIQUE,
         precio_usd REAL NOT NULL,
+        precio_ves REAL NOT NULL DEFAULT 0,
+        moneda_precio TEXT DEFAULT 'usd',
         insumo_id INTEGER REFERENCES insumos(id) ON DELETE SET NULL,
         activo INTEGER DEFAULT 1
       );
@@ -196,6 +198,43 @@ async function initDb() {
       await db.run("ALTER TABLE productos ADD COLUMN moneda_precio TEXT DEFAULT 'usd'");
       console.log('[DB] Migration: added dual-pricing columns to productos');
     } catch (_) { /* columns already exist */ }
+
+    // Add dual-pricing columns to servicios if they don't exist
+    try {
+      await db.run('ALTER TABLE servicios ADD COLUMN precio_ves REAL NOT NULL DEFAULT 0');
+      await db.run("ALTER TABLE servicios ADD COLUMN moneda_precio TEXT DEFAULT 'usd'");
+      console.log('[DB] Migration: added dual-pricing columns to servicios');
+    } catch (_) { /* columns already exist */ }
+
+    // Deduplicate servicios — keep only the highest-id row per name
+    try {
+      const result = await db.run(`
+        DELETE FROM servicios
+        WHERE id NOT IN (
+          SELECT MAX(id) FROM servicios GROUP BY nombre
+        )
+      `);
+      if (result.changes > 0) {
+        console.log(`[DB] Migration: removed ${result.changes} duplicate service row(s)`);
+      }
+    } catch (e) {
+      console.warn('[DB] Migration: deduplication failed', e.message);
+    }
+
+    // Deduplicate insumos — keep only the highest-id row per name
+    try {
+      const result = await db.run(`
+        DELETE FROM insumos
+        WHERE id NOT IN (
+          SELECT MAX(id) FROM insumos GROUP BY nombre
+        )
+      `);
+      if (result.changes > 0) {
+        console.log(`[DB] Migration: removed ${result.changes} duplicate insumo row(s)`);
+      }
+    } catch (e) {
+      console.warn('[DB] Migration: insumos deduplication failed', e.message);
+    }
 
     console.log('[DB] Database initialized successfully.');
     return db;
