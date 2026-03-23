@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { LuPlus, LuPencil, LuTrash2, LuSearch, LuTrendingDown, LuTriangleAlert } from 'react-icons/lu'
+import { LuPlus, LuPencil, LuTrash2, LuSearch, LuTrendingDown, LuTriangleAlert, LuFolderOpen, LuCheck, LuX } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import JsBarcode from 'jsbarcode'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
@@ -220,6 +220,236 @@ function MermaModal({ producto, onClose, onSave }) {
   )
 }
 
+// ── Category Manager Modal ───────────────────────────────────────────────────
+function CategoryManagerModal({ onClose, onChanged }) {
+  const [cats, setCats] = useState([])
+  const [allProds, setAllProds] = useState([])
+  const [selectedCat, setSelectedCat] = useState(null) // category object currently being assigned
+  const [checkedIds, setCheckedIds] = useState(new Set())
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [newName, setNewName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(null)
+  const [prodSearch, setProdSearch] = useState('')
+
+  const load = useCallback(async () => {
+    const [c, p] = await Promise.all([
+      window.api.invoke('categorias:list'),
+      window.api.invoke('categorias:productos'),
+    ])
+    setCats(c)
+    setAllProds(p)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const selectCat = (cat) => {
+    setSelectedCat(cat)
+    // Pre-check all products currently in this category
+    setCheckedIds(new Set(allProds.filter(p => p.categoria_id === cat.id).map(p => p.id)))
+    setProdSearch('')
+  }
+
+  const toggleCheck = (id) => setCheckedIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const toggleAll = (filtered) => {
+    const filteredIds = filtered.map(p => p.id)
+    const allChecked = filteredIds.every(id => checkedIds.has(id))
+    setCheckedIds(prev => {
+      const next = new Set(prev)
+      if (allChecked) { filteredIds.forEach(id => next.delete(id)) }
+      else { filteredIds.forEach(id => next.add(id)) }
+      return next
+    })
+  }
+
+  const saveAssign = async () => {
+    if (!selectedCat) return
+    setSaving(true)
+    try {
+      await window.api.invoke('categorias:bulk_assign', {
+        categoria_id: selectedCat.id,
+        producto_ids: [...checkedIds],
+      })
+      await load()
+      onChanged()
+    } finally { setSaving(false) }
+  }
+
+  const addCat = async () => {
+    if (!newName.trim()) return
+    const cat = await window.api.invoke('categorias:create', { nombre: newName.trim() })
+    setNewName('')
+    await load()
+    onChanged()
+    selectCat({ ...cat, total_productos: 0 })
+  }
+
+  const startEdit = (cat) => { setEditingId(cat.id); setEditName(cat.nombre) }
+  const saveEdit = async (id) => {
+    if (!editName.trim()) return
+    await window.api.invoke('categorias:update', { id, nombre: editName.trim() })
+    setEditingId(null)
+    await load()
+    onChanged()
+    if (selectedCat?.id === id) setSelectedCat(c => ({ ...c, nombre: editName.trim() }))
+  }
+
+  const deleteCat = async () => {
+    if (!confirmDel) return
+    await window.api.invoke('categorias:delete', confirmDel.id)
+    setConfirmDel(null)
+    if (selectedCat?.id === confirmDel.id) setSelectedCat(null)
+    await load()
+    onChanged()
+  }
+
+  const filteredProds = allProds.filter(p =>
+    !prodSearch || p.nombre.toLowerCase().includes(prodSearch.toLowerCase()) || (p.codigo || '').toLowerCase().includes(prodSearch.toLowerCase())
+  )
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-lg" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-5 shrink-0">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2"><LuFolderOpen className="text-brand-400" /> Gestor de Categorías</h2>
+            <p className="text-xs text-gray-500">{cats.length} categorías · {allProds.length} productos</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost btn-sm text-xl">✕</button>
+        </div>
+
+        <div className="flex gap-4 overflow-hidden flex-1" style={{ minHeight: 0 }}>
+
+          {/* Left column — category list + create */}
+          <div className="flex flex-col gap-3 w-60 shrink-0">
+            {/* New category */}
+            <div className="flex gap-2">
+              <input className="input flex-1" placeholder="Nueva categoría..." value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCat()} />
+              <button className="btn-primary btn-sm" onClick={addCat}><LuPlus /></button>
+            </div>
+
+            {/* Category list */}
+            <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+              {cats.map(cat => (
+                <div key={cat.id}
+                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors group ${
+                    selectedCat?.id === cat.id ? 'bg-brand-600 text-white' : 'bg-surface-700 hover:bg-surface-600'
+                  }`}
+                  onClick={() => selectCat(cat)}
+                >
+                  {editingId === cat.id ? (
+                    <>
+                      <input className="input text-sm flex-1 py-0.5 px-2 h-7"
+                        value={editName} onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(cat.id); if (e.key === 'Escape') setEditingId(null) }}
+                        onClick={e => e.stopPropagation()} autoFocus />
+                      <button onClick={e => { e.stopPropagation(); saveEdit(cat.id) }} className="text-accent-green hover:scale-110"><LuCheck /></button>
+                      <button onClick={e => { e.stopPropagation(); setEditingId(null) }} className="text-gray-400 hover:scale-110"><LuX /></button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium truncate">{cat.nombre}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCat?.id === cat.id ? 'bg-white/20' : 'bg-surface-600'}`}>{cat.total_productos}</span>
+                      <button onClick={e => { e.stopPropagation(); startEdit(cat) }}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${selectedCat?.id === cat.id ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-white'}`}><LuPencil /></button>
+                      <button onClick={e => { e.stopPropagation(); setConfirmDel(cat) }}
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${selectedCat?.id === cat.id ? 'text-red-300 hover:text-red-200' : 'text-red-400 hover:text-red-300'}`}><LuTrash2 /></button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {cats.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Sin categorías aún</p>}
+            </div>
+          </div>
+
+          {/* Right column — product assignment */}
+          <div className="flex flex-col flex-1 overflow-hidden gap-3">
+            {selectedCat ? (
+              <>
+                <div className="flex items-center justify-between shrink-0">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Productos en <span className="text-brand-400">{selectedCat.nombre}</span></p>
+                    <p className="text-xs text-gray-500">{checkedIds.size} seleccionados</p>
+                  </div>
+                  <button onClick={saveAssign} disabled={saving} className="btn-primary btn-sm">
+                    {saving ? '⏳ Guardando...' : '💾 Guardar Asignación'}
+                  </button>
+                </div>
+                <input className="input shrink-0" placeholder="Buscar producto..."
+                  value={prodSearch} onChange={e => setProdSearch(e.target.value)} />
+                <div className="overflow-y-auto flex-1 border border-white/5 rounded-xl">
+                  <table className="w-full text-sm" style={{ minWidth: 'unset' }}>
+                    <thead className="bg-surface-700 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-3 py-2 text-left">
+                          <input type="checkbox" className="accent-brand-500"
+                            checked={filteredProds.length > 0 && filteredProds.every(p => checkedIds.has(p.id))}
+                            onChange={() => toggleAll(filteredProds)} />
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Producto</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Categoría Actual</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProds.map(p => (
+                        <tr key={p.id}
+                          className={`border-t border-white/5 cursor-pointer transition-colors ${
+                            checkedIds.has(p.id) ? 'bg-brand-600/10' : 'hover:bg-surface-700/50'
+                          }`}
+                          onClick={() => toggleCheck(p.id)}
+                        >
+                          <td className="px-3 py-2">
+                            <input type="checkbox" className="accent-brand-500" checked={checkedIds.has(p.id)} onChange={() => toggleCheck(p.id)} onClick={e => e.stopPropagation()} />
+                          </td>
+                          <td className="px-3 py-2">
+                            <p className="font-medium text-white">{p.nombre}</p>
+                            {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
+                          </td>
+                          <td className="px-3 py-2">
+                            {p.categoria_nombre
+                              ? <span className={`badge-blue text-xs ${ p.categoria_id === selectedCat.id ? 'bg-brand-600/30 text-brand-300 border-brand-500/30' : ''}`}>{p.categoria_nombre}</span>
+                              : <span className="text-gray-500 text-xs">—</span>
+                            }
+                          </td>
+                          <td className="px-3 py-2 text-gray-400">{p.stock_actual}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center flex-1 text-gray-500">
+                <LuFolderOpen className="text-4xl mb-3 text-gray-600" />
+                <p className="text-sm">Selecciona una categoría para gestionar sus productos</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {confirmDel && (
+        <ConfirmationModal
+          title={`¿Eliminar «the ${confirmDel.nombre}»?`}
+          message={`Los productos de esta categoría quedarán sin categoria asignada. Esta acción no se puede deshacer.`}
+          onConfirm={deleteCat}
+          onCancel={() => setConfirmDel(null)}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── Main Inventario page ─────────────────────────────────────────────────────
 export default function Inventario() {
   const { fmt, toVes, tasa } = useApp()
@@ -229,9 +459,8 @@ export default function Inventario() {
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [filterBajoStock, setFilterBajoStock] = useState(false)
-  const [modal, setModal] = useState(null) // null | 'crear' | 'editar' | 'merma'
+  const [modal, setModal] = useState(null) // null | 'crear' | 'editar' | 'merma' | 'categorias'
   const [selected, setSelected] = useState(null)
-  const [newCat, setNewCat] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null) // null | producto
 
   const load = useCallback(async () => {
@@ -263,13 +492,6 @@ export default function Inventario() {
     load()
   }
 
-  const addCat = async () => {
-    if (!newCat.trim()) return
-    await window.api.invoke('categorias:create', { nombre: newCat.trim() })
-    setNewCat('')
-    load()
-  }
-
   const bajoStockCount = productos.filter(p => p.stock_actual <= p.stock_minimo).length
 
   return (
@@ -287,6 +509,9 @@ export default function Inventario() {
               <LuTriangleAlert className="text-sm" /> {bajoStockCount} bajo stock
             </button>
           )}
+          <button onClick={() => setModal('categorias')} className="btn-secondary flex items-center gap-2">
+            <LuFolderOpen /> <span className="hidden sm:inline">Categorías</span>
+          </button>
           <button onClick={() => { setSelected(null); setModal('crear') }} className="btn-primary flex items-center gap-2">
             <LuPlus /> <span className="hidden sm:inline">Nuevo </span>Producto
           </button>
@@ -307,13 +532,6 @@ export default function Inventario() {
         <div className="flex items-center gap-2 text-sm text-gray-300">
           <input type="checkbox" id="bajo" checked={filterBajoStock} onChange={e => setFilterBajoStock(e.target.checked)} className="accent-brand-500" />
           <label htmlFor="bajo">Solo bajo stock</label>
-        </div>
-
-        {/* Quick add category */}
-        <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
-          <input className="input flex-1 sm:w-36" placeholder="Nueva categoría" value={newCat} onChange={e => setNewCat(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addCat()} />
-          <button className="btn-secondary btn-sm" onClick={addCat}>+ Cat</button>
         </div>
       </div>
 
@@ -386,6 +604,9 @@ export default function Inventario() {
       )}
       {modal === 'merma' && selected && (
         <MermaModal producto={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
+      )}
+      {modal === 'categorias' && (
+        <CategoryManagerModal onClose={() => setModal(null)} onChanged={load} />
       )}
 
       {confirmDelete && (

@@ -152,7 +152,9 @@
     @apply card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-in;
   }
   .modal-lg {
-    @apply modal max-w-2xl;
+    @apply card p-6 w-full max-w-4xl animate-slide-in;
+    max-height: 90vh;
+    overflow: hidden;
   }
   .modal-xl {
     @apply modal max-w-4xl;
