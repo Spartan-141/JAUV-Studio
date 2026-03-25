@@ -210,6 +210,7 @@ export default function POS() {
   const [results, setResults] = useState([])
   const [cart, setCart] = useState([])
   const [descuento, setDescuento] = useState('')
+  const [tipoDescuento, setTipoDescuento] = useState('usd') // 'usd', 'ves', 'perc'
   const [modal, setModal] = useState(null)
   const [selectedResult, setSelectedResult] = useState(null)
   const [lastVenta, setLastVenta] = useState(null)
@@ -299,7 +300,20 @@ export default function POS() {
   const subtotal_usd = cart.reduce((s, c) => s + c.subtotal_usd, 0)
   const subtotal_ves = cart.reduce((s, c) => s + (c.moneda_precio === 'ves' ? c.subtotal_ves : c.subtotal_usd * tasa), 0)
 
-  const descValUsd = parseFloat(descuento) || 0
+  const valorInput = parseFloat(descuento) || 0
+  let descValUsd = 0
+  if (tipoDescuento === 'usd') {
+    descValUsd = valorInput
+  } else if (tipoDescuento === 'ves') {
+    descValUsd = tasa > 0 ? valorInput / tasa : 0
+  } else if (tipoDescuento === 'perc') {
+    descValUsd = (subtotal_usd * valorInput) / 100
+  }
+
+  // Safety bounds
+  if (isNaN(descValUsd) || descValUsd < 0) descValUsd = 0
+  if (descValUsd > subtotal_usd) descValUsd = subtotal_usd
+
   const ratioDescuento = subtotal_usd > 0 ? descValUsd / subtotal_usd : 0
   const descValVes = subtotal_ves * ratioDescuento
   
@@ -403,8 +417,14 @@ export default function POS() {
                         <button onClick={()=>updateQty(i,item.cantidad+1)} className="btn-ghost btn-sm w-6 h-6 p-0">+</button>
                       </div>
                     </td>
-                    <td className="text-right text-gray-300 hidden sm:table-cell">{fmt(item.precio_unitario_usd)}</td>
-                    <td className="text-right font-semibold text-white text-xs sm:text-sm">{fmt(item.subtotal_usd)}</td>
+                    <td className="text-right hidden sm:table-cell">
+                      <p className="font-semibold text-white">Bs. {(item.moneda_precio === 'ves' ? item.precio_unitario_ves : item.precio_unitario_usd * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] text-gray-500">{fmt(item.precio_unitario_usd)} USD</p>
+                    </td>
+                    <td className="text-right">
+                      <p className="font-bold text-brand-400 text-xs sm:text-sm">Bs. {(item.moneda_precio === 'ves' ? item.subtotal_ves : item.subtotal_usd * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] text-gray-400">{fmt(item.subtotal_usd)} USD</p>
+                    </td>
                     <td><button onClick={()=>removeItem(i)} className="btn-ghost btn-sm text-red-400">✕</button></td>
                   </tr>
                 ))}
@@ -424,8 +444,11 @@ export default function POS() {
           onClick={() => setSummaryOpen(o => !o)}
         >
           <span className="font-bold text-white">Resumen del pedido</span>
-          <div className="flex items-center gap-3">
-            <span className="text-brand-400 font-bold">{fmt(totalFinalUsd)}</span>
+          <div className="flex items-center gap-3 text-right">
+            <div>
+              <p className="text-brand-400 font-bold text-sm">Bs. {totalFinalVes.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
+              <p className="text-gray-400 text-[10px]">{fmt(totalFinalUsd)} USD</p>
+            </div>
             <span className="text-gray-400 text-xs">{summaryOpen ? '▲' : '▼'}</span>
           </div>
         </button>
@@ -440,24 +463,69 @@ export default function POS() {
             <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal_usd)}</span></div>
 
             <div>
-              <label className="label">Descuento (USD)</label>
-              <input className="input" type="number" min="0" step="0.01" placeholder="0.00"
-                value={descuento} onChange={e=>{ const v=e.target.value; if(parseFloat(v)||0<=subtotal_usd) setDescuento(v) }} />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-gray-400">Descuento</label>
+                <div className="flex bg-surface-700 rounded-lg p-0.5 border border-white/5">
+                  {[
+                    { id: 'usd', label: '$' },
+                    { id: 'ves', label: 'Bs' },
+                    { id: 'perc', label: '%' }
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setTipoDescuento(t.id); setDescuento('') }}
+                      className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-all ${tipoDescuento === t.id ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <input 
+                className="input input-sm" 
+                type="text" 
+                placeholder={tipoDescuento === 'perc' ? "0 %" : tipoDescuento === 'ves' ? "0.00 Bs" : "0.00 $"}
+                value={descuento} 
+                onChange={e => {
+                  let v = e.target.value;
+                  // Allow empty or just a minus/dot initially
+                  if (v === '' || v === '.') {
+                    setDescuento(v);
+                    return;
+                  }
+                  
+                  // Only allow valid numbers
+                  if (!/^\d*\.?\d*$/.test(v)) return;
+
+                  const num = parseFloat(v);
+                  // Validation
+                  if (tipoDescuento === 'perc' && num > 100) return;
+                  if (tipoDescuento === 'usd' && num > subtotal_usd) return;
+                  if (tipoDescuento === 'ves' && num > subtotal_ves) return;
+                  
+                  setDescuento(v);
+                }} 
+              />
             </div>
 
             <div className="border-t border-white/10 pt-3">
               <div className="flex justify-between items-baseline">
                 <span className="text-gray-300 font-medium">Total Final:</span>
-                <span className="text-2xl font-bold text-white">{fmt(totalFinalUsd)}</span>
+                <span className="text-2xl font-bold text-brand-400">Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span>
               </div>
-              <p className="text-right text-xs text-gray-500 mt-1">Exacto: Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+              <p className="text-right text-xs text-gray-500 mt-1">Equivalente: {fmt(totalFinalUsd)} USD</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <button onClick={() => cart.length && setModal('pago')} disabled={cart.length === 0}
-              className="btn-success btn-lg w-full">
-              💳 COBRAR {cart.length > 0 ? fmt(totalFinalUsd) : ''}
+              className="btn-success btn-lg w-full flex flex-col items-center py-2">
+              <span className="text-base">💳 COBRAR</span>
+              {cart.length > 0 && (
+                <span className="text-[10px] opacity-90">
+                  Bs. {totalFinalVes.toLocaleString('es-VE', { maximumFractionDigits: 2 })} ({fmt(totalFinalUsd)} USD)
+                </span>
+              )}
             </button>
             <button onClick={clearCart} disabled={cart.length===0} className="btn-ghost w-full text-sm">
               🗑️ Limpiar carrito
