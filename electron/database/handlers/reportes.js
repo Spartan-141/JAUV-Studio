@@ -89,7 +89,8 @@ async function upsertCierre(db, fecha, tasa) {
   return data;
 }
 
-// ── Auto-close days: closes any days with sales that aren't today and aren't closed yet ─
+// ── Auto-close days: re-snapshots ALL previous days that have sales, ───────────
+// guaranteeing the stored report always includes every sale from that day.
 // Called automatically on app startup.
 async function autoClosePreviousDays() {
   const db = getDb();
@@ -99,12 +100,12 @@ async function autoClosePreviousDays() {
   const cfg = await db.get(`SELECT valor FROM configuracion WHERE clave = 'tasa_del_dia'`);
   const tasa = parseFloat(cfg?.valor || '1');
 
-  // Find distinct dates from ventas that are before today and have no cierre_dia entry
+  // Find ALL distinct sale dates strictly before today (re-upsert even if already closed,
+  // so that a day closed mid-afternoon gets refreshed with any later sales on startup).
   const pendientes = await db.all(`
     SELECT DISTINCT date(fecha) AS fecha
     FROM ventas
     WHERE date(fecha) < ?
-      AND date(fecha) NOT IN (SELECT fecha FROM cierres_dia)
     ORDER BY fecha ASC
   `, [today]);
 

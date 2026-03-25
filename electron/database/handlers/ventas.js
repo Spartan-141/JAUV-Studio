@@ -85,3 +85,36 @@ ipcMain.handle('ventas:get', async (_e, id) => {
 ipcMain.handle('ventas:ultimas', async (_e, limit = 20) => {
   return await getDb().all('SELECT * FROM ventas ORDER BY fecha DESC LIMIT ?', [limit]);
 });
+
+// Paginated sales list with date range filters
+ipcMain.handle('ventas:paginated', async (_e, { page = 1, perPage = 25, fechaDesde = '', fechaHasta = '', estado = '' } = {}) => {
+  const db = getDb();
+  const offset = (page - 1) * perPage;
+
+  const where = [];
+  const params = [];
+
+  if (fechaDesde) { where.push("date(fecha) >= ?"); params.push(fechaDesde); }
+  if (fechaHasta) { where.push("date(fecha) <= ?"); params.push(fechaHasta); }
+  if (estado)     { where.push("estado = ?");       params.push(estado); }
+
+  const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
+  const countRow = await db.get(`SELECT COUNT(*) AS total FROM ventas ${whereClause}`, params);
+  const total = countRow?.total || 0;
+
+  const ventas = await db.all(
+    `SELECT * FROM ventas ${whereClause} ORDER BY fecha DESC LIMIT ? OFFSET ?`,
+    [...params, perPage, offset]
+  );
+
+  // Attach details, pagos, abonos for each venta
+  for (const v of ventas) {
+    v.detalles = await db.all('SELECT * FROM detalle_venta WHERE venta_id = ? ORDER BY id ASC', [v.id]);
+    v.pagos    = await db.all('SELECT * FROM pagos WHERE venta_id = ? ORDER BY id ASC', [v.id]);
+    v.abonos   = await db.all('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC', [v.id]);
+  }
+
+  return { ventas, total, page, perPage, pages: Math.ceil(total / perPage) };
+});
+

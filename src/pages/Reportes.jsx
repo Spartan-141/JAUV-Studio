@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { LuTrendingUp, LuHistory, LuPackage, LuDollarSign, LuBanknote, LuSmartphone, LuLandmark, LuChevronDown, LuChevronUp, LuCreditCard, LuCalendarDays, LuLock, LuCalendarClock, LuRefreshCw, LuCircleCheck, LuChartColumn } from 'react-icons/lu'
+import { LuTrendingUp, LuHistory, LuPackage, LuDollarSign, LuBanknote, LuSmartphone, LuLandmark, LuChevronDown, LuChevronUp, LuCreditCard, LuCalendarDays, LuLock, LuCalendarClock, LuRefreshCw, LuCircleCheck, LuChartColumn, LuSearch, LuChevronLeft, LuChevronRight, LuListOrdered } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -235,6 +235,161 @@ function InventarioPanel({ reporte, fmt, tasa }) {
   )
 }
 
+// ── Paginated all-sales panel ──────────────────────────────────────────────────
+function VentasHistorialPanel({ fmt }) {
+  const [mode, setMode]           = useState('range')   // 'day' | 'month' | 'range'
+  const [day, setDay]             = useState('')         // YYYY-MM-DD
+  const [month, setMonth]         = useState(format(new Date(), 'yyyy-MM')) // YYYY-MM
+  const [desde, setDesde]         = useState('')         // YYYY-MM-DD
+  const [hasta, setHasta]         = useState('')         // YYYY-MM-DD
+  const [estado, setEstado]       = useState('')         // '' | 'pagada' | 'credito'
+  const [page, setPage]           = useState(1)
+  const PER_PAGE                  = 25
+  const [data, setData]           = useState({ ventas: [], total: 0, pages: 0 })
+  const [loading, setLoading]     = useState(false)
+
+  const buildDates = () => {
+    if (mode === 'day')  return { fechaDesde: day,  fechaHasta: day }
+    if (mode === 'month') {
+      const [y, m] = month.split('-')
+      const last = new Date(Number(y), Number(m), 0).getDate()
+      return { fechaDesde: `${month}-01`, fechaHasta: `${month}-${String(last).padStart(2,'0')}` }
+    }
+    return { fechaDesde: desde, fechaHasta: hasta }
+  }
+
+  const load = useCallback(async (p = 1) => {
+    setLoading(true)
+    const { fechaDesde, fechaHasta } = buildDates()
+    const result = await window.api.invoke('ventas:paginated', { page: p, perPage: PER_PAGE, fechaDesde, fechaHasta, estado })
+    setData(result)
+    setPage(p)
+    setLoading(false)
+  }, [mode, day, month, desde, hasta, estado]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-load on filter change
+  useEffect(() => { load(1) }, [mode, day, month, desde, hasta, estado]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalIngresos = data.ventas.reduce((s, v) => s + (v.total_usd || 0), 0)
+
+  return (
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <div className="card p-4 flex flex-wrap gap-3 items-end">
+        {/* Mode selector */}
+        <div className="flex rounded-lg overflow-hidden border border-white/10 text-sm shrink-0">
+          {[['day','Día'],['month','Mes'],['range','Rango']].map(([k, label]) => (
+            <button key={k} onClick={() => { setMode(k); setPage(1) }}
+              className={`px-4 py-2 transition-colors ${mode === k ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Date inputs */}
+        {mode === 'day' && (
+          <input type="date" className="input w-44" value={day} onChange={e => { setDay(e.target.value); setPage(1) }} />
+        )}
+        {mode === 'month' && (
+          <input type="month" className="input w-44" value={month} onChange={e => { setMonth(e.target.value); setPage(1) }} />
+        )}
+        {mode === 'range' && (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Desde</span>
+              <input type="date" className="input w-40" value={desde} onChange={e => { setDesde(e.target.value); setPage(1) }} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Hasta</span>
+              <input type="date" className="input w-40" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1) }} />
+            </div>
+          </>
+        )}
+
+        {/* Estado filter */}
+        <select className="select w-36" value={estado} onChange={e => { setEstado(e.target.value); setPage(1) }}>
+          <option value="">Todos</option>
+          <option value="pagada">Pagadas</option>
+          <option value="credito">Crédito</option>
+        </select>
+
+        <button onClick={() => load(1)} className="btn-secondary btn-sm ml-auto flex items-center gap-2">
+          <LuRefreshCw /> Actualizar
+        </button>
+      </div>
+
+      {/* Summary bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="stat-card">
+          <p className="stat-label">Ventas encontradas</p>
+          <p className="text-xl font-bold text-white">{data.total}</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-label">Ingresos (esta página)</p>
+          <p className="text-xl font-bold text-accent-green">${totalIngresos.toFixed(2)}</p>
+        </div>
+        <div className="stat-card hidden sm:block">
+          <p className="stat-label">Registros por página</p>
+          <p className="text-xl font-bold text-white">{PER_PAGE}</p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Estado</th>
+              <th className="text-right">Total</th>
+              <th className="text-right">Cobrado</th>
+              <th className="text-right">Pendiente</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={8} className="text-center py-10 text-gray-500">Cargando ventas...</td></tr>
+            ) : data.ventas.length === 0 ? (
+              <tr><td colSpan={8} className="text-center py-10 text-gray-500">No hay ventas para los filtros seleccionados</td></tr>
+            ) : (
+              data.ventas.map(v => <VentaRow key={v.id} v={v} fmt={fmt} />)
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {data.pages > 1 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-500">
+            Página {data.page} de {data.pages} · {data.total} registros
+          </span>
+          <div className="flex gap-1">
+            <button onClick={() => load(1)}         disabled={page === 1}           className="btn-ghost btn-sm" title="Primera">«</button>
+            <button onClick={() => load(page - 1)}  disabled={page === 1}           className="btn-ghost btn-sm"><LuChevronLeft /></button>
+            {/* Page number pills */}
+            {Array.from({ length: Math.min(5, data.pages) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, data.pages - 4))
+              const p = start + i
+              return (
+                <button key={p} onClick={() => load(p)}
+                  className={`btn-sm px-3 rounded-lg text-sm ${p === page ? 'bg-brand-600 text-white' : 'btn-ghost'}`}>
+                  {p}
+                </button>
+              )
+            })}
+            <button onClick={() => load(page + 1)}  disabled={page === data.pages} className="btn-ghost btn-sm"><LuChevronRight /></button>
+            <button onClick={() => load(data.pages)} disabled={page === data.pages} className="btn-ghost btn-sm" title="Última">»</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Reportes page ─────────────────────────────────────────────────────────
 export default function Reportes() {
   const { fmt, tasa } = useApp()
@@ -345,6 +500,12 @@ export default function Reportes() {
         >
           <LuPackage /> Inventario
         </button>
+        <button
+          onClick={() => setActiveTab('ventas')}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'ventas' ? 'bg-brand-600 text-white shadow-glow' : 'text-gray-400 hover:text-white hover:bg-surface-700/50'}`}
+        >
+          <LuListOrdered /> Todas las Ventas
+        </button>
         </div>
       </div>
 
@@ -417,6 +578,11 @@ export default function Reportes() {
             <InventarioPanel reporte={inventario} fmt={fmt} tasa={tasa} />
           ) : null}
         </div>
+      )}
+
+      {/* ── TODAS LAS VENTAS TAB ── */}
+      {activeTab === 'ventas' && (
+        <VentasHistorialPanel fmt={fmt} />
       )}
 
       {/* Confirm close day modal */}
