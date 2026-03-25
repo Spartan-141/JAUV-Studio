@@ -56,7 +56,7 @@ function printTicket({ venta, detalles, pagos, config, tasa }) {
 }
 
 // ── Payment Modal ─────────────────────────────────────────────────────────────
-function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onConfirm }) {
+function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onConfirm, onError }) {
   const [pagos, setPagos] = useState({ efectivo_usd: '', efectivo_ves: '', pago_movil: '', transferencia: '' })
   const [clienteNombre, setClienteNombre] = useState('')
   const [saving, setSaving] = useState(false)
@@ -80,11 +80,16 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
   
   const vueltoUsd = totalPagadoUsd > totalFinal ? totalPagadoUsd - totalFinal : 0
   const vueltoVes = totalPagadoVes > exactTotalVes ? totalPagadoVes - exactTotalVes : 0
-  
-  const esCredito = faltaUsd > 0.005
+
+  // Consider fully paid if USD is covered OR VES is fully covered (within 0.5 Bs tolerance)
+  // This avoids false "credit" status when VES amounts cause rounding cents in USD
+  const vesCubierto = faltaVes <= 0.5
+  const usdCubierto = faltaUsd <= 0.005
+  const esCredito = !vesCubierto && !usdCubierto
+
 
   const confirm = async () => {
-    if (esCredito && !clienteNombre.trim()) { alert('Se requiere nombre del cliente para ventas a crédito'); return }
+    if (esCredito && !clienteNombre.trim()) { onError('Se requiere el nombre del cliente cuando la venta es a crédito.'); return; }
     setSaving(true)
     try {
       const pagosArr = Object.entries(pagos)
@@ -99,7 +104,7 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
           }
         })
 
-      await onConfirm({ pagosArr, clienteNombre, esCredito, falta: faltaUsd })
+      await onConfirm({ pagosArr, clienteNombre, esCredito, falta: esCredito ? faltaUsd : 0 })
     } finally { setSaving(false) }
   }
 
@@ -113,8 +118,8 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
 
         <div className="bg-brand-900/30 border border-brand-500/30 rounded-xl p-4 mb-5 text-center">
           <p className="text-gray-400 text-sm">Total a cobrar</p>
-          <p className="text-3xl font-bold text-white">${Number(totalFinal).toFixed(2)}</p>
-          <p className="text-sm text-gray-400">Bs. {exactTotalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+          <p className="text-3xl font-bold text-white">Bs. {exactTotalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
+          <p className="text-sm text-gray-400">${Number(totalFinal).toFixed(2)} USD</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -129,18 +134,21 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
 
         {/* Summary */}
         <div className="bg-surface-700 rounded-xl p-4 space-y-2 text-sm mb-4">
-          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">${totalPagadoUsd.toFixed(2)} / Bs.{totalPagadoVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>
-          {faltaUsd > 0.005 && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">${faltaUsd.toFixed(2)} / Bs.{faltaVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>}
-          {vueltoUsd > 0.005 && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">${vueltoUsd.toFixed(2)} / Bs.{vueltoVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>}
+          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">Bs. {totalPagadoVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${totalPagadoUsd.toFixed(2)}</span></div>
+          {esCredito && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">Bs. {faltaVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${faltaUsd.toFixed(2)}</span></div>}
+          {(vueltoUsd > 0.005 || vueltoVes > 0.5) && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">Bs. {vueltoVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${vueltoUsd.toFixed(2)}</span></div>}
         </div>
 
-        {esCredito && (
-          <div className="mb-4 p-3 bg-accent-yellow/10 border border-accent-yellow/30 rounded-xl">
-            <p className="text-accent-yellow text-sm mb-2">⚠️ Esta venta quedará como <strong>crédito</strong>. Se require nombre del cliente.</p>
-            <input className="input" required placeholder="Nombre del cliente *"
-              value={clienteNombre} onChange={e => setClienteNombre(e.target.value)} />
-          </div>
-        )}
+        <div className={`mb-4 p-3 rounded-xl border ${esCredito ? 'bg-accent-yellow/10 border-accent-yellow/30' : 'bg-surface-700 border-white/5'}`}>
+          {esCredito && <p className="text-accent-yellow text-sm mb-2">⚠️ Esta venta quedará como <strong>crédito</strong>. Se requiere nombre del cliente.</p>}
+          <input 
+            className="input" 
+            required={esCredito} 
+            placeholder={esCredito ? "Nombre del cliente *" : "Nombre del cliente (Opcional)"}
+            value={clienteNombre} 
+            onChange={e => setClienteNombre(e.target.value)} 
+          />
+        </div>
 
         <div className="flex gap-3 justify-end flex-wrap">
           <button onClick={onClose} className="btn-secondary">Cancelar</button>
@@ -374,8 +382,9 @@ export default function POS() {
                     {r.codigo && <span className="text-gray-500 text-xs ml-2 font-mono">{r.codigo}</span>}
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-bold text-sm">{fmt(r.precio_venta_usd || r.precio_usd)}</p>
-                    {r._type==='producto' && <p className="text-xs text-gray-500">Stock: {r.stock_actual}</p>}
+                    <p className="text-white font-bold text-sm">Bs. {((r.moneda_precio === 'ves' ? r.precio_venta_ves : r.precio_venta_usd * tasa) || (r.moneda_precio === 'ves' ? r.precio_ves : r.precio_usd * tasa) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-[10px] text-gray-400">{fmt(r.precio_venta_usd || r.precio_usd)} USD</p>
+                    {r._type==='producto' && <p className="text-[10px] text-gray-500">Stock: {r.stock_actual}</p>}
                   </div>
                 </button>
               ))}
@@ -543,7 +552,7 @@ export default function POS() {
       {/* Payment modal */}
       {modal === 'pago' && (
         <PagoModal cart={cart} totalFinal={totalFinalUsd} exactTotalVes={totalFinalVes} tasa={tasa} config={config}
-          onClose={()=>setModal(null)} onConfirm={confirmarVenta} />
+          onClose={()=>setModal(null)} onConfirm={confirmarVenta} onError={setAlertMsg} />
       )}
 
       {/* Ticket modal */}

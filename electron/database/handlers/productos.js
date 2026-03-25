@@ -26,9 +26,12 @@ ipcMain.handle('productos:list', async (_e, filters = {}) => {
   const params = [];
   const where = [];
 
+  const cleanCol = (c) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(${c}), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'Á', 'a'), 'É', 'e'), 'Í', 'i'), 'Ó', 'o'), 'Ú', 'u')`;
+
   if (filters.search) {
-    where.push("(p.nombre LIKE ? OR p.codigo LIKE ? OR p.marca LIKE ?)");
-    const like = `%${filters.search}%`;
+    const term = filters.search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    where.push(`(${cleanCol('p.nombre')} LIKE ? OR ${cleanCol('p.codigo')} LIKE ? OR ${cleanCol('p.marca')} LIKE ?)`);
+    const like = `%${term}%`;
     params.push(like, like, like);
   }
   if (filters.categoria_id) {
@@ -112,11 +115,14 @@ ipcMain.handle('productos:delete', async (_e, id) => {
 });
 
 ipcMain.handle('productos:search', async (_e, query) => {
-  const like = `%${query}%`;
+  const term = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const like = `%${term}%`;
+  const cleanCol = (c) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(${c}), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'Á', 'a'), 'É', 'e'), 'Í', 'i'), 'Ó', 'o'), 'Ú', 'u')`;
+
   return await getDb().all(`
     SELECT p.*, c.nombre AS categoria_nombre FROM productos p
     LEFT JOIN categorias c ON c.id = p.categoria_id
-    WHERE p.nombre LIKE ? OR p.codigo LIKE ? OR p.marca LIKE ?
+    WHERE ${cleanCol('p.nombre')} LIKE ? OR ${cleanCol('p.codigo')} LIKE ? OR ${cleanCol('p.marca')} LIKE ?
     ORDER BY p.nombre ASC LIMIT 20
   `, [like, like, like]);
 });

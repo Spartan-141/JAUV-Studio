@@ -31,11 +31,14 @@ ipcMain.handle('servicios:delete', async (_e, id) => {
 });
 
 ipcMain.handle('servicios:search', async (_e, query) => {
-  const like = `%${query}%`;
+  const term = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const like = `%${term}%`;
+  const cleanCol = (c) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(${c}), 'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'Á', 'a'), 'É', 'e'), 'Í', 'i'), 'Ó', 'o'), 'Ú', 'u')`;
+
   return await getDb().all(`
     SELECT s.*, i.nombre AS insumo_nombre FROM servicios s
     LEFT JOIN insumos i ON i.id = s.insumo_id
-    WHERE s.nombre LIKE ? AND s.activo = 1
+    WHERE ${cleanCol('s.nombre')} LIKE ? AND s.activo = 1
     ORDER BY s.nombre ASC LIMIT 20
   `, [like]);
 });
