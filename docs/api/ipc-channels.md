@@ -562,26 +562,30 @@ const result = await window.api.invoke('cuentas:abonar', {
 
 ---
 
-## 🔄 Manejo de Errores
+## ❌ Manejo de Errores y Validaciones (Nivel Backend)
 
-**Errores se propagan como excepciones JavaScript:**
+A diferencia de la v1.0, el backend ahora implementa validación estricta y un patrón de respuesta predecible.
+
+### 1. Validación con Zod
+Todas las entradas de los canales IPC son validadas mediante esquemas de **Zod**. Si los datos no cumplen con el formato (ej: falta un campo obligatorio, número negativo donde no se permite, etc.), el Caso de Uso retornará un error inmediato sin tocar la base de datos.
+
+### 2. Patrón Result
+Los errores de lógica de negocio (ej: "Producto no encontrado", "Stock insuficiente") no lanzan excepciones. En su lugar, el backend devuelve un objeto `Result` que el controlador IPC interpreta.
 
 ```javascript
-try {
-  await window.api.invoke('productos:get', 9999)
-} catch (err) {
-  console.error(err.message) // "Result set is empty" o SQL error
-}
+// Ejemplo de manejo en el controlador backend
+const result = await this.useCases.crearVenta(payload);
+if (!result.isSuccess) throw result.getError(); // Convierte el error de dominio en una excepción IPC
+return result.getValue();
 ```
 
-**Errores comunes:**
+### 3. Errores Comunes IPC
 
 | Error | Causa | Solución |
-|-------|--------|----------|
-| `No handler implemented` | El canal IPC no existe (typo en nombre) | Verificar nombre exacto |
-| `Database not initialized` | `initDb()` no ha corrido | App debe iniciar main primero |
-| `SQLITE_CONSTRAINT` | Violación de UNIQUE o NOT NULL | Validar datos antes de enviar |
-| `Result set is empty` | `db.get` no encontró fila | Comprobar ID existente |
+|-------|-------|----------|
+| `ZodError: ...` | Datos enviados desde el frontend inválidos | Revisar tipos en el payload enviado |
+| `No handler implemented` | Canal inexistente o typo | Verificar catálogo abajo |
+| `SQLITE_CONSTRAINT` | Error de integridad (raro gracias a Zod) | Revisar lógica de base de datos |
 
 ---
 
@@ -603,13 +607,14 @@ try {
 - Solo se expone `window.api.invoke` y `window.api.on`
 - El renderer NO tiene acceso directo a `require`, `process`, `ipcRenderer`
 
-**Validación en backend:**
-- Los handlers no asumen tipos correctos ─ usan `parseFloat` fallback
-- Pero **no hay validación estricta** (no usa Joi/Zod). Confía en frontend.
+**Validación Estricta (Zod):**
+- Los handlers ahora implementan **Zod** para validar cada payload.
+- Se filtran campos extras no deseados.
+- Se realiza coerción de tipos segura (ej: asegurar que el precio sea `number`).
 
 **Sanitización:**
-- SQL usa bound parameters (`?`) → previene inyección
-- Strings se pasan tal cual a DB → riesgo de XSS si se muestran sin escapar (pero React escapea por defecto)
+- SQL usa bound parameters (`?`) obligatorios vía Repositorios → previene inyección SQL de forma nativa.
+- Los strings se guardan sanitizados por SQLite. React se encarga de escapar XSS al renderizar.
 
 ---
 

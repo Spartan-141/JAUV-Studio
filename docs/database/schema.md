@@ -73,7 +73,8 @@ INSERT OR IGNORE INTO configuracion VALUES
 - `ticket_pie` → mensaje final del ticket
 - `impresora_ancho` → '58' o '80' mm (afecta ancho CSS del ticket)
 
-**Handler:** `config:get`, `config:getAll`, `config:set` (config.js)
+**Repositorio:** `SqliteConfigRepository` (`infrastructure/database/repositories/`)
+**Handler:** `config:get`, `config:getAll`, `config:set` (ConfigIpcController.ts)
 
 ---
 
@@ -99,7 +100,8 @@ INSERT OR IGNORE INTO categorias (nombre) VALUES
 - `UNIQUE(nombre)` evita duplicados
 - `id` es PK automáticamente indexada
 
-**Handler:** `categorias:list`, `categorias:create`, `categorias:update`, `categorias:delete`, `categorias:productos`, `categorias:bulk_assign` (categorias.js)
+**Repositorio:** `SqliteCategoriasRepository`
+**Handler:** `categorias:list`, etc. (CategoriasIpcController.ts)
 
 ---
 
@@ -142,7 +144,8 @@ Inventario de productos vendibles.
 - UNIQUE en `codigo`
 - INDEX implícito en `categoria_id` (por foreign key, SQLite no crea índice automáticamente en FK, pero puede añadirse manualmente si performance issues)
 
-**Handler:** productos:list (con filtros), productos:get, productos:create, productos:update, productos:delete, productos:search (productos.js)
+**Repositorio:** `SqliteProductosRepository`
+**Handler:** `productos:*` (ProductosIpcController.ts)
 
 ---
 
@@ -170,7 +173,8 @@ VALUES ('Papel Carta', 'carta', 500, 50, 0.003),
 - 1 insumo → N servicios (opcional, por `insumo_id`)
 - 1 insumo → N líneas de venta (cuando servicio consume ese insumo)
 
-**Handler:** insumos:list, insumos:create, insumos:update, insumos:delete, insumos:ajustar (insumos.js)
+**Repositorio:** `SqliteInsumosRepository`
+**Handler:** `insumos:*` (InsumosIpcController.ts)
 
 ---
 
@@ -196,7 +200,8 @@ Catálogo de servicios de copiado/impresión.
 - En `detalle_venta`, `cantidad_hojas_gastadas` = hojas físicas consumidas (ej: 6 por 1 error)
 - Servicio define `insumo_id` → al vender, se descuenta `cantidad_hojas_gastadas` del insumo
 
-**Handler:** servicios:list, servicios:create, servicios:update, servicios:delete, servicios:search (servicios.js)
+**Repositorio:** `SqliteServiciosRepository`
+**Handler:** `servicios:*` (ServiciosIpcController.ts)
 
 ---
 
@@ -232,7 +237,8 @@ saldo_pendiente_usd = (credito) ? faltante : 0
 - 1 venta → N pagos
 - 1 venta → N abonos
 
-**Handler:** ventas:create (transacción), ventas:list (con filtros), ventas:get (completo con detalles), ventas:ultimas, ventas:paginated (ventas.js)
+**Repositorio:** `SqliteVentasRepository`
+**Handler:** `ventas:*` (VentasIpcController.ts)
 
 ---
 
@@ -308,7 +314,8 @@ Pagos parciales realizados post-venta para saldar deudas de crédito.
 - `abonos` se crean después, en transacciones separadas (cuentas:abonar)
 - Ambos se suman para calcular "total pagado" de una venta
 
-**Handler:** cuentas:abonar (cuentas.js:22)
+**Repositorio:** `SqliteCuentasRepository`
+**Handler:** `cuentas:abonar` (CuentasIpcController.ts)
 
 ---
 
@@ -332,7 +339,8 @@ Registro de pérdidas, daños o robos de inventario.
 **Efecto secundario:**
 - Al crear merma, automáticamente reduce stock del producto/insumo correspondiente (UPDATE stock_actual -= cantidad o stock_hojas -= cantidad)
 
-**Handler:** mermas:create (mermas.js) - transacción con rollback
+**Repositorio:** `SqliteMermasRepository`
+**Handler:** `mermas:create` (MermasIpcController.ts)
 
 ---
 
@@ -376,7 +384,8 @@ Snapshot diario de operación. Un registro por fecha.
   ]
   ```
 
-**Handler:** reportes:cerrar_dia (upsert), reportes:hoy (lectura), reportes:historial, reportes:cierre_detalle (reportes.js)
+**Repositorio:** `SqliteReportesRepository`
+**Handler:** `reportes:*` (ReportesIpcController.ts)
 
 **Auto-cierre:**
 - Función `autoClosePreviousDays()` en `reportes.js:95` → se ejecuta al iniciar la app en `main.js:64`

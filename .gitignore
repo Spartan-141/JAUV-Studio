@@ -22,6 +22,7 @@ node_modules/
 dist/
 dist-ssr/
 dist-electron/
+dist-backend/
 out/
 release/
 build/

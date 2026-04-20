@@ -53,11 +53,11 @@ function startApiServer() {
 }
 ```
 
-**Registro en `main.js`:**
-```javascript
+**Registro en `main.ts`:**
+```typescript
 app.whenReady().then(async () => {
   await initDb()
-  require('./database/handlers/...')  // registra handlers IPC
+  setupDI()                           // registra controladores IPC
   const { startApiServer } = require('./api-server')
   startApiServer()  // ← arranca Express
   createWindow()

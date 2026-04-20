@@ -17,7 +17,7 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend: `src/context/AppContext.jsx:48` (updateTasa)
-- Backend: `electron/database/handlers/config.js:15` (config:set)
+- Backend: Controlador IPC en `ConfigIpcController.ts`
 - UI: `src/App.jsx:24-58` (ExchangeRateBar)
 
 ---
@@ -49,7 +49,7 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend principal: `src/pages/POS.jsx`
-- Backend transaccional: `electron/database/handlers/ventas.js:6` (ventas:create)
+- Backend transaccional: Controlador en `VentasIpcController.ts` a través del Caso de Uso `VentasUseCases.ts`
 - Imresión de ticket: `src/pages/POS.jsx:16` (printTicket)
 
 ---
@@ -70,8 +70,8 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend: `src/pages/CentroCopiado.jsx`
-- Backend: `electron/database/handlers/ventas.js:34-39` (lógica de descuento de insumos)
-- Modelo: `electron/database/handlers/servicios.js`
+- Backend: Deducción de inventario orquestada en `VentasUseCases.ts` (lógica de descuento de insumos)
+- Modelo: Interfaces y entidades en `domain/` (`IServiciosRepository.ts`)
 
 ---
 
@@ -101,10 +101,10 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 **Implementación:**
 - Frontend productos: `src/pages/Inventario.jsx`
 - Frontend categorías: integrado en Inventario (CategoryManagerModal)
-- Backend productos: `electron/database/handlers/productos.js`
-- Backend insumos: `electron/database/handlers/insumos.js`
-- Backend mermas: `electron/database/handlers/mermas.js`
-- Backend categorías: `electron/database/handlers/categorias.js`
+- Backend productos: `ProductosIpcController.ts` / `ProductosUseCases.ts`
+- Backend insumos: `InsumosIpcController.ts` / `InsumosUseCases.ts`
+- Backend mermas: `MermasIpcController.ts` / `MermasUseCases.ts`
+- Backend categorías: `CategoriasIpcController.ts` / `CategoriasUseCases.ts`
 
 ---
 
@@ -131,7 +131,7 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend: `src/pages/CuentasPorCobrar.jsx`
-- Backend: `electron/database/handlers/cuentas.js`
+- Backend: `CuentasIpcController.ts` / `CuentasUseCases.ts`
 - Transacciones `cuentas:abonar` y `cuentas:ajustar_deuda`
 
 ---
@@ -182,8 +182,8 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend: `src/pages/Reportes.jsx`
-- Backend: `electron/database/handlers/reportes.js`
-- Auto-cierre: `reportes:autoClosePreviousDays()` en `main.js:60`
+- Backend: Uso del patrón CQRS en `SqliteReportesRepository.ts`
+- Auto-cierre: `reportesUseCases.executeAutoClosePreviousDays()` en `main.ts`
 
 ---
 
@@ -207,7 +207,7 @@ Este documento detalla todas las funcionalidades que debe proporcionar el sistem
 
 **Implementación:**
 - Frontend: `src/pages/Dashboard.jsx`
-- Backend: `electron/database/handlers/reportes.js:207` (dashboard:metrics)
+- Backend: `ReportesIpcController.ts` (`dashboard:metrics` derivado de CQRS queries)
 
 ---
 
@@ -227,7 +227,7 @@ Claves soportadas en tabla `configuracion`:
 - `impresora_ancho` (string: '58' o '80' mm)
 
 **Implementación:**
-- CRUD: `config:get`, `config:getAll`, `config:set` en `handlers/config.js`
+- CRUD: Controlado por `ConfigIpcController.ts` a través de `ConfigUseCases.ts`
 - Cargados en `AppContext` al iniciar
 
 ---
@@ -304,9 +304,9 @@ Claves soportadas en tabla `configuracion`:
 
 | Módulo | Página Principal | Handler IPC | Estado |
 |--------|-----------------|-------------|--------|
-| Configuración | - | `config:*` | ✅ Completo |
-| Categorías | Inventario | `categorias:*` | ✅ Completo |
-| Productos | Inventario | `productos:*` | ✅ Completo |
+| Configuración | - | `config:*` | ✅ Migrado |
+| Categorías | Inventario | `categorias:*` | ✅ Migrado |
+| Productos | Inventario | `productos:*` | ✅ Migrado |
 | Insumos | Centro Copiado | `insumos:*` | ✅ Completo |
 | Servicios | Centro Copiado | `servicios:*` | ✅ Completo |
 | Ventas | POS | `ventas:*` | ✅ Completo |

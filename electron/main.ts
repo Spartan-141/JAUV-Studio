@@ -6,7 +6,7 @@ const isDev = process.env.NODE_ENV === 'development';
 // ─── Intercept IPC Handlers for API Server ──────────────────────────────────
 ipcMain._customHandlers = new Map();
 const originalHandle = ipcMain.handle.bind(ipcMain);
-ipcMain.handle = (channel, listener) => {
+ipcMain.handle = (channel: any, listener: any) => {
   ipcMain._customHandlers.set(channel, listener);
   originalHandle(channel, listener);
 };
@@ -40,7 +40,7 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }: any) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
@@ -49,19 +49,52 @@ function createWindow() {
 app.whenReady().then(async () => {
   await initDb();
 
-  // Register all IPC handlers
-  require('./database/handlers/config');
-  require('./database/handlers/categorias');
-  require('./database/handlers/productos');
-  require('./database/handlers/insumos');
-  require('./database/handlers/servicios');
-  require('./database/handlers/ventas');
-  require('./database/handlers/cuentas');
-  const { autoClosePreviousDays } = require('./database/handlers/reportes');
-  require('./database/handlers/mermas');
+  // DDD Architecture Setup
+  const { setupDI } = require('./infrastructure/di/setup');
+  setupDI();
+
+  const { container } = require('./infrastructure/di/container');
+  const configController = container.resolve('ConfigIpcController');
+  configController.register();
+
+  const categoriasController = container.resolve('CategoriasIpcController');
+  categoriasController.register();
+
+  const insumosController = container.resolve('InsumosIpcController');
+  insumosController.register();
+
+  const serviciosController = container.resolve('ServiciosIpcController');
+  serviciosController.register();
+
+  const productosController = container.resolve('ProductosIpcController');
+  productosController.register();
+
+  const ventasController = container.resolve('VentasIpcController');
+  ventasController.register();
+
+  const cuentasController = container.resolve('CuentasIpcController');
+  cuentasController.register();
+
+  const mermasController = container.resolve('MermasIpcController');
+  mermasController.register();
+
+  const reportesController = container.resolve('ReportesIpcController');
+  reportesController.register();
+
+  // Register remaining legacy IPC handlers
+  // require('./database/handlers/config'); // Migrated to DDD
+  // require('./database/handlers/categorias'); // Migrated to DDD
+  // require('./database/handlers/productos'); // Migrated to DDD
+  // require('./database/handlers/insumos'); // Migrated to DDD
+  // require('./database/handlers/servicios'); // Migrated to DDD
+  // require('./database/handlers/ventas'); // Migrated to DDD
+  // require('./database/handlers/cuentas'); // Migrated to DDD
+  // require('./database/handlers/reportes'); // Migrated to DDD
+  // require('./database/handlers/mermas'); // Migrated to DDD
 
   // Auto-close any previous days that weren't closed before the app was shut down
-  try { await autoClosePreviousDays(); } catch (e) { console.error('[Startup] Auto-close failed:', e); }
+  const reportesUseCases = container.resolve('ReportesUseCases');
+  try { await reportesUseCases.executeAutoClosePreviousDays(); } catch (e) { console.error('[Startup] Auto-close failed:', e); }
 
   // Start local HTTP API for mobile clients on the same network
   try {
@@ -74,11 +107,11 @@ app.whenReady().then(async () => {
   createWindow();
 
   // Grant camera & microphone access without a prompt (needed for html5-qrcode via DroidCam)
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+  session.defaultSession.setPermissionRequestHandler((_webContents: any, permission: any, callback: any) => {
     const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone', 'display-capture'];
     callback(allowed.includes(permission));
   });
-  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+  session.defaultSession.setPermissionCheckHandler((_webContents: any, permission: any) => {
     const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone'];
     return allowed.includes(permission);
   });

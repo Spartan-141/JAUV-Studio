@@ -10,11 +10,11 @@ Esta guía configura el entorno local para desarrollar y probar cambios en JAUV 
 
 | Herramienta | Versión Mínima | Propósito |
 |-------------|----------------|-----------|
-| Node.js | v18.x (recomendado v20 LTS) | Runtime JavaScript |
+| Node.js | v18.x (v20 LTS) | Runtime JavaScript |
 | npm | v8.x | Gestor de paquetes |
 | Git | 2.x | Control de versiones |
-| Python | 3.7+ (para node-gyp) | Compilar módulos nativos |
-| Windows Build Tools / build-essential | latest | Compilar `better-sqlite3` |
+| TypeScript | v5.x | Lenguaje del Backend |
+| Windows Build Tools | latest | Compilar `sqlite3` (si es necesario) |
 
 **Nota:** En Windows, instala "windows-build-tools" globalmente:
 ```bash
@@ -49,22 +49,20 @@ Esto instala:
 
 **Duración:** 2-5 minutos dependiendo de conexión.
 
-### 3. Recompilar better-sqlite3 para Electron
+### 3. Compilar el Backend (TypeScript)
 
-**IMPORTANTE:** `better-sqlite3` es un módulo nativo en C++ que debe compilarse contra la versión de V8 que trae Electron.
+El backend utiliza TypeScript y debe ser transpilado a `dist-backend/` antes de ejecutar la aplicación.
 
 ```bash
-npx @electron/rebuild -f -w better-sqlite3
+npm run build:backend
 ```
 
 **Qué hace:**
-- Descarga headers de Electron 35 (V8 11.x)
-- Recompila `better-sqlite3` desde código fuente
-- Genera el `.node` binario en `node_modules/better-sqlite3/lib/`
+- Ejecuta `tsc -p tsconfig.backend.json`
+- Genera archivos JavaScript en `dist-backend/` compatibles con Electron.
+- Mantiene el tipado estricto durante el desarrollo.
 
-**Errores comunes:**
-- `python2 not found` → Configurar `npm config set python python3`
-- `MSBUILD` errors → Asegurar Visual Studio Build Tools instalados
+**Nota:** Si vas a desarrollar activamente en el backend, puedes usar `npm run build:backend-watch` en una terminal separada.
 
 ### 4. Iniciar en Desarrollo
 
@@ -87,12 +85,14 @@ npm run dev
 ## 🏗️ Estructura de Desarrollo
 
 ```
-├── electron/           # Código principal de Electron (main + preload)
+├── electron/           # Código principal de Electron (TypeScript source)
 ├── src/               # Código frontend React (Vite)
-├── dist/              # Output de build (no committear)
-├── dist-electron/     # Output empaquetado (no committear)
+├── dist/              # Output de build del Frontend (no committear)
+├── dist-backend/      # Output de compilación del Backend (no committear)
+├── dist-electron/     # Output empaquetado final (no committear)
 ├── node_modules/      # Dependencias
 ├── package.json       # Scripts y dependencias
+├── tsconfig.backend.json # Configuración de TypeScript para el Backend
 ├── vite.config.js     # Config Vite
 ├── tailwind.config.js # Config Tailwind
 └── postcss.config.js  # Config PostCSS
@@ -103,10 +103,12 @@ npm run dev
 ## 🔧 Scripts Disponibles
 
 ```bash
-npm run dev          # Inicia Vite + Electron en modo watch
-npm run vite         # Solo Vite dev server (sin Electron)
-npm run electron:dev # Solo Electron (esperando Vite en localhost:5173)
-npm run build        # Construye para producción (Vite build + electron-builder)
+npm run dev          # Inicia Vite + Electron + Watch del Backend
+npm run vite         # Solo Vite dev server (frontend)
+npm run build:backend # Compila el backend una sola vez
+npm run build:backend-watch # Compila backend en modo observación
+npm run build        # Build final (React + Backend + App Package)
+npm run test         # Ejecuta pruebas unitarias con Jest
 ```
 
 **Detalles:**

@@ -7,13 +7,15 @@ JAUV Studio POS es una aplicación de escritorio **Electron** que ejecuta una in
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Electron Main Process                    │
-│  (Node.js - acceso a filesystem, SQLite, sistema)          │
+│   (TypeScript - DDD / Clean Architecture)                   │
 ├─────────────────────────────────────────────────────────────┤
-│  IPC Handlers (ventas:, productos:, config:...)            │
-│  ↓                                                        │
-│  Database Layer (db.js + handlers/)                        │
-│  ↓                                                        │
-│  SQLite (jauv_pos.db)                                      │
+│  Infrastructure Layer (Controllers, DI, Repositories)       │
+│  ↓                                                          │
+│  Application Layer (Use Cases + Validation)                │
+│  ↓                                                          │
+│  Domain Layer (Entities, Repositories Interfaces)           │
+│  ↓                                                          │
+│  SQLite (jauv_pos.db) via IUnitOfWork                       │
 └─────────────────────────────────────────────────────────────┘
                          ↑ ↑  ↑
                          │ │  │ IPC (invoke/handle)
@@ -60,64 +62,41 @@ const result = await window.api.invoke('ventas:create', payload)
 - Async/await natural (no callbacks)
 - Máximo 1 handler por canal (unicast)
 
-### 2. **Controladores por Módulo (Handlers)**
+### 2. **Arquitectura Limpia (Layered/DDD)**
 
-Cada área funcional tiene su propio archivo handler:
-- `config.js` → configuraciones globales
-- `productos.js` → CRUD productos
-- `ventas.js` → lógica transaccional de ventas
-- `reportes.js` → cálculos de métricas y cierres
-- etc.
+El Main Process está organizado en tres capas desacopladas:
 
-Cada handler define múltiples canales IPC:
-```javascript
-ipcMain.handle('productos:list', ...)
-ipcMain.handle('productos:create', ...)
-ipcMain.handle('productos:update', ...)
-```
+- **Dominio (`domain/`):** Contiene la lógica de negocio pura, interfaces de repositorios y entidades. No depende de ninguna otra capa.
+- **Aplicación (`application/`):** Orquestación de Casos de Uso. Valida entradas con **Zod** y utiliza interfaces para interactuar con la infraestructura.
+- **Infraestructura (`infrastructure/`):** Implementaciones técnicas (SQLite, Controladores IPC, Contenedor DI). Depende de las capas internas.
 
-**Razón:** Separación de preocupaciones, fácil de testear, escalable.
+**Ventajas:**
+- Desacoplamiento total de la tecnología (SQLite).
+- Testabilidad unitaria de los Casos de Uso sin DB.
+- Prevención de errores mediante tipado estricto y validación temprana.
 
-### 3. **Context API para Estado Global**
+### 3. **Inyección de Dependencias (DI)**
 
-AppContext provee estado compartido a toda la app:
+Utilizamos un contenedor manual en `electron/infrastructure/di/setup.ts` para gestionar la creación y vida de las instancias de repositorios y servicios de forma centralizada.
 
-```javascript
-<AppProvider>
-  {children}
-</AppProvider>
-// Acceso desde cualquier componente:
-const { tasa, config, fmt, toVes } = useApp()
-```
+### 4. **Unidad de Trabajo (Unit of Work)**
 
-**Valores almacenados:**
-- `tasa` - tasa BCV actual (float)
-- `config` - objeto con todas las claves de configuracion
-- `loading` - estado de carga inicial
-- Métodos: `updateTasa`, `updateConfig`, `fmt`, `toVes`, `toUsd`
+Toda operación que modifica múltiples tablas (venta, abono, merma) utiliza la interfaz `IUnitOfWork`. Esto asegura atomicidad (ACID) sin acoplar la lógica de negocio a APIs específicas de base de datos dentro de los Casos de Uso.
 
-**Razón:** La tasa y configuración se usan en casi todas las páginas; evitar prop-drilling.
-
-### 4. **Transacciones Atómicas**
-
-Toda operación que modifica múltiples tablas (venta, abono, merma) usa BEGIN/COMMIT/ROLLBACK:
-
-```javascript
+```typescript
 try {
-  await db.run('BEGIN TRANSACTION');
-  // ... múltiples INSERT/UPDATE
-  await db.run('COMMIT');
+  await this.uow.start();
+  // ... operaciones múltiples vía repositorios
+  await this.uow.commit();
 } catch (err) {
-  await db.run('ROLLBACK');
+  await this.uow.rollback();
   throw err;
 }
 ```
 
-Garantiza **ACID**:
-- Atomicidad: o todo se aplica o nada
-- Consistencia: constraints de SQLite se respetan
-- Aislamiento: SQLite usa locks
-- Durabilidad: WAL mode garantiza persistencia
+### 5. **Patrón Result**
+
+Cada Caso de Uso retorna un objeto `Result<T>`, eliminando el uso de excepciones para errores de negocio y garantizando un manejo de errores predecible en los controladores.
 
 ---
 
@@ -125,21 +104,19 @@ Garantiza **ACID**:
 
 ```
 electron/
-├── main.js                     # Entry point (crea ventana, registra handlers)
-├── preload.js                  # Expone window.api (contextBridge)
-├── api-server.js               # Express HTTP server (red local)
-└── database/
-    ├── db.js                   # initDb() - crea tablas, seeds, migraciones
-    └── handlers/              # IPC handlers (1 archivo por módulo)
-        ├── config.js           # config:get, config:set, config:getAll
-        ├── categorias.js       # CRUD categorías + bulk assign
-        ├── productos.js        # CRUD productos + search + list
-        ├── insumos.js          # CRUD insumos + ajuste stock
-        ├── servicios.js        # CRUD servicios
-        ├── ventas.js           # ventas:create (transaccional), list, get, paginated
-        ├── cuentas.js          # cuentas:list, abonar, ajustar_deuda
-        ├── mermas.js           # mermas:create (transaccional)
-        └── reportes.js         # reportes:hoy, cerrar_dia, historial, inventario, dashboard:metrics
+├── main.ts                     # Entry point (DI setup + inicia controladores)
+├── preload.ts                  # Expone window.api (contextBridge)
+├── application/                # 🧠 Capa de Aplicación
+│   ├── use-cases/              # Casos de uso (Lógica de Orquestación)
+│   └── interfaces/             # IUnitOfWork y otros contratos técnicos
+├── domain/                     # 🛡️ Capa de Dominio
+│   ├── common/                 # Clase Result y ResultFactory
+│   ├── services/               # GeneradorCodigoBarras, etc.
+│   └── repositories/           # Interfaces de Repositorios
+└── infrastructure/             # 🛠️ Capa de Infraestructura
+    ├── controllers/            # Controladores IPC (exponen canales)
+    ├── database/               # Implementaciones de DB y Repositorios
+    └── di/                     # Inyección de Dependencias (setup.ts)
 
 src/
 ├── App.jsx                     # Layout principal + enrutamiento
@@ -168,13 +145,20 @@ src/
 ### 1. **Inicialización**
 
 ```javascript
-// main.js
+// main.ts
 app.whenReady().then(async () => {
-  await initDb();              // → Crea DB + tablas + seeds
-  require('./database/handlers/...'); // → Registra todos los handlers IPC
-  autoClosePreviousDays();     // → Cierra días anteriores automáticamente
-  startApiServer();            // → Inicia Express en puerto 3001
-  createWindow();              // → Muestra ventana principal
+  await initDb();                           // → Crea DB + tablas + seeds
+  setupDI();                                // → Configura Inyección de Dependencias
+  
+  // Resuelve y registra controladores
+  container.resolve('VentasIpcController').register();
+
+  // Usa Casos de Uso para auto-cierre
+  const reportes = container.resolve('ReportesUseCases');
+  await reportes.executeAutoClosePreviousDays();
+  
+  startApiServer();                         // → Inicia Express HTTP
+  createWindow();                           // → Muestra ventana
 })
 ```
 
@@ -202,18 +186,18 @@ const result = await window.api.invoke('ventas:create', {
   pagos: [ { metodo, monto_usd, monto_ves } ]
 })
 
-// ventas.js handler
-BEGIN TRANSACTION
-1. INSERT INTO ventas → obtiene ventaId
-2. For each detalle:
-   - INSERT INTO detalle_venta
-   - UPDATE productos SET stock_actual -= cantidad WHERE id = ?
-   - O UPDATE insumos SET stock_hojas -= hojas WHERE id = ?
-3. For each pago: INSERT INTO pagos
-COMMIT
-
-// Respuesta al frontend con id de venta
-return { id: ventaId }
+// VentasUseCases.ts
+try {
+  await this.uow.start();
+  // 1. Crear venta (IVentasRepository)
+  // 2. Por cada detalle: insert detalle y descontar stock (IProductosRepository y IInsumosRepository)
+  // 3. Por cada pago: registrar pago (IVentasRepository)
+  await this.uow.commit();
+  return ResultFactory.ok({ id: ventaId });
+} catch(e) {
+  await this.uow.rollback();
+  return ResultFactory.fail(e);
+}
 ```
 
 ### 3. **Reporte del Día**
@@ -222,21 +206,18 @@ return { id: ventaId }
 // Reportes.jsx
 const hoy = await window.api.invoke('reportes:hoy')
 
-// reportes.js handler
+// ReportesIpcController.ts
+const hoy = await this.useCases.getReporteHoy(todayStr());
+
+// SqliteReportesRepository.ts (CQRS approach)
 const snapshot = await db.get('SELECT * FROM cierres_dia WHERE fecha = ?', [today])
 if (!snapshot) {
-  // Compute live data
-  const data = await buildDayData(db, today) // ← función de 66 líneas
+  // Compute live data without instantiating entities (optimizacion)
+  const data = await buildDayData(today)
   return { cerrado: false, ...data }
 } else {
-  // Return stored snapshot (parsed JSON)
-  return {
-    cerrado: true,
-    ...snapshot,
-    pagos: JSON.parse(snapshot.pagos_json),
-    abonos: JSON.parse(snapshot.abonos_json),
-    ventas: JSON.parse(snapshot.ventas_json)
-  }
+  // Return stored snapshot
+  return { cerrado: true, ...snapshot }
 }
 ```
 

@@ -2,113 +2,97 @@
 
 ## 🧩 Patrones Arquitectónicos Relevantes
 
-### 1. Model-View-Controller (MVC) Adaptado
+### 1. Clean Architecture (Capas)
 
-Aunque React utiliza un patrón diferente (component-based), el proyecto tiene un MVC implícito:
+El sistema ahora sigue una arquitectura de capas concéntricas (arquitectura hexagonal/cebolla):
 
 | Capa | Ubicación | Responsabilidad |
 |------|-----------|-----------------|
-| **Modelo** | `electron/database/` (tablas, handlers) | Estructura de datos, acceso a DB |
-| **Vista** | `src/pages/`, `src/components/` (React JSX) | Renderizado de UI |
-| **Controlador** | Handlers IPC (`electron/database/handlers/*.js`) | Lógica de negocio, orquestación |
+| **Dominio** | `electron/domain/` | Reglas de negocio puras, Entidades e interfaces de Repositorios. |
+| **Aplicación** | `electron/application/` | Casos de uso (Use Cases) que orquestan el negocio. |
+| **Infraestructura**| `electron/infrastructure/` | Implementaciones (SQLite, IPC Controllers, DI). |
 
 **Flujo:**
 ```
-Vista (React) → invoke('ventas:create') → Controlador (handler) → Modelo (DB queries) → Resultado ← Controlador ← Vista
+Vista (React) → IPC Controller → Use Case → Repository → SQLite
 ```
 
 ---
 
-### 2. Repository Pattern (Implícito)
+### 2. Repository Pattern (Explícito)
 
-Los handlers actúan como **repositories** que encapsulan el acceso a datos:
+Separamos la definición de los datos de su implementación técnica mediante interfaces en el dominio:
 
-```javascript
-// Handler = Repository con métodos específicos
-ipcMain.handle('productos:list', async (_, filters) => {
-  // Lógica de consulta (SELECT con joins, filters)
-  return await db.all(sql, params)
-})
-
-ipcMain.handle('productos:create', async (_, data) => {
-  // Lógica de escritura (INSERT)
-  return await db.run(...)
-})
-```
-
-**Ventaja:**
-- El frontend no conoce el esquema SQL
-- Permite cambiar implementación sin tocar UI
-- Centraliza validaciones y business rules
-
----
-
-### 3. Facade Pattern (IPC API)
-
-`window.api` es un **facade** que simplifica la comunicación:
-
-```javascript
-// Antes (sin facade):
-const channel = 'ventas:create'
-ipcRenderer.invoke(channel, payload)... // repetitivo
-
-// Con facade:
-window.api.invoke('ventas:create', payload) // limpio
-```
-
-Y el **preload script** es el facade que expone solo lo necesario:
-
-```javascript
-contextBridge.exposeInMainWorld('api', {
-  invoke: ...,
-  on: ...
-})
-// oculta el resto de Node.js APIs
-```
-
----
-
-### 4. Observer Pattern (React State + Context)
-
-AppContext usa **Observer** implícito de React:
-
-```javascript
-<AppProvider>
-  <App> → usa useApp()
-</AppProvider>
-// Cuando setTasa() cambia, todos los componentes que llaman useApp() se re-renderizan.
-```
-
-**Implementación:**
-- `useState` + `useContext` + `useEffect`
-- No librería externa, es nativo de React
-
----
-
-### 5. Strategy Pattern (Métodos de Pago, Moneda)
-
-**Estrategia de conversión monetaria:**
-
-```javascript
-// AppContext: estrategias de formateo
-const fmt = (usd, currency) => {
-  if (currency === 'USD') return `$${usd.toFixed(2)}`
-  return `Bs. ${(usd * tasa).toLocaleString(...)}`
+```typescript
+// domain/repositories/interfaces/IProductosRepository.ts
+export interface IProductosRepository {
+  getAll(): Promise<Result<Producto[]>>;
+  create(data: any): Promise<Result<number>>;
 }
 
-// Y en POS: estrategias de cálculo de total
-const totalPagadoVes = Object.entries(pagos).reduce((acc, [key, val]) => {
-  if (key === 'efectivo_usd') return acc + (val * tasa)  // estrategia USD→VES
-  return acc + val                                        // estrategia directa VES
-}, 0)
+// infrastructure/database/repositories/SqliteProductosRepository.ts
+export class SqliteProductosRepository implements IProductosRepository {
+  // Implementación real con SQL
+}
 ```
 
-**Estrategia de descuento:**
-```javascript
-// tipoDescuento = 'usd' | 'ves' | 'perc'
-if (tipo === 'usd') descValVes = valorInput * tasa
-if (tipo === 'ves') descValVes = valorInput
-if (tipo === 'perc') descValVes = subtotal_ves * (valorInput / 100)
+**Ventaja:** Permite cambiar la DB (ej. de SQLite a PostgreSQL) sin tocar una sola línea de lógica de negocio en los Casos de Uso.
+
+---
+
+### 3. Case-based Logic (Use Cases)
+
+Cada acción que el usuario puede realizar en el sistema tiene un Caso de Uso dedicado:
+
+- `CrearVentaUseCase`
+- `RegistrarAbonoUseCase`
+- `GenerarReporteHoy`
+
+Esto centraliza la validación (vía **Zod**) y asegura que las reglas de negocio se apliquen de forma consistente, sin importar si la petición viene de Electron o de la API HTTP.
+
+---
+
+### 4. Patrón Result
+
+En lugar de lanzar excepciones (`throw`), las capas de dominio y aplicación devuelven objetos `Result`.
+
+```typescript
+if (!producto) return ResultFactory.fail('Producto no encontrado');
+return ResultFactory.ok(producto);
+```
+
+**Beneficios:**
+- Tipado estricto de errores.
+- Obliga al desarrollador a considerar el escenario de fallo.
+- Evita crashes inesperados en el proceso Main.
+
+---
+
+### 5. Dependency Injection (DI)
+
+Las clases no instancian sus dependencias. En su lugar, las reciben en el constructor:
+
+```typescript
+constructor(private repo: IProductosRepository) {}
+```
+
+El **DI Container** (`infrastructure/di/setup.ts`) se encarga de "armar" el rompecabezas al inicio de la aplicación.
+
+---
+
+### 6. Unit of Work (Transacciones)
+
+Para garantizar la integridad de los datos en operaciones complejas, utilizamos una abstracción de transacciones:
+
+```typescript
+await uow.start();
+try {
+  await repo1.save();
+  await repo2.delete();
+  await uow.commit();
+} catch {
+  await uow.rollback();
+}
 ```
 
 ---
@@ -350,11 +334,11 @@ ipcMain.handle('channel', async (event, arg1, arg2) => {
 ### Inicialización App
 
 ```javascript
-main.js:
+main.ts:
 1. app.whenReady()
 2. initDb() → crea tablas + seeds
-3. require handlers → registra ipcMain.handle
-4. autoClosePreviousDays()
+3. setupDI() → registra repositorios, UseCases y Controladores
+4. Llamada inicial a ReportesUseCases.executeAutoClosePreviousDays()
 5. startApiServer()
 6. createWindow()
 
@@ -366,15 +350,15 @@ React:
 
 ### Transacción de Venta (ventas:create)
 
-```javascript
-1. BEGIN
-2. INSERT ventas → get lastID
+```typescript
+1. uow.start() → BEGIN TRANSACTION
+2. VentasRepository.createVenta() → get lastID
 3. FOR each detalle:
-     INSERT detalle_venta
-     UPDATE stock (producto o insumo)
-4. FOR each pago: INSERT pagos
-5. COMMIT
-6. Return { id: lastID }
+     VentasRepository.createDetalle()
+     ProductosRepository.update() o InsumosRepository.ajustarStock()
+4. FOR each pago: VentasRepository.createPago()
+5. uow.commit() → COMMIT TRANSACTION
+6. Return ResultFactory.ok({ id: lastID })
 ```
 
 Si falla cualquier paso: ROLLBACK, error al frontend.
@@ -383,9 +367,10 @@ Si falla cualquier paso: ROLLBACK, error al frontend.
 
 ## 🏷️ Convenciones de Código
 
-### naming conventions
+### Naming Conventions
 
-- **Archivos handlers:** plural, snake_case: `productos.js`, `cuentas.js`
+- **Use Cases:** PascalCase: `VentasUseCases.ts`, `MermasUseCases.ts`
+- **Controladores:** `<Modulo>IpcController.ts` → `VentasIpcController.ts`
 - **Canales IPC:** `<modulo>:<accion>` → `'ventas:create'`, `'config:get'`
 - **Componentes React:** PascalCase → `POS`, `ProductoModal`
 - **Variables camelCase:** `tasa`, `subtotal_usd`
@@ -395,7 +380,7 @@ Si falla cualquier paso: ROLLBACK, error al frontend.
 
 ## 🧪 Patrones de Testing (Manual)
 
-No hay tests automatizados. Patrón manual:
+No hay tests automatizados todavía, pero la arquitectura DDD permite pruebas unitarias. Patrón manual actual:
 
 1. **Testing de flujos:**ejecutar npm run dev, seguir checklist de escenarios
 2. **Console logging:** Para debug, `console.log('[DB] ...')`

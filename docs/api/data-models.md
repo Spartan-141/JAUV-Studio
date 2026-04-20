@@ -423,9 +423,9 @@ const tasa = parseFloat(cfg.tasa_del_dia)
 
 ---
 
-**Para ver todos los tipos en contexto:**
-- `src/context/AppContext.jsx:62-69` (formatters)
-- `electron/database/handlers/*.js` (retornos de handlers)
+**Para ver todos los tipos reales bajo la nueva arquitectura DDD:**
+- `electron/domain/repositories/interfaces/*.ts` (Interfaces centrales)
+- `electron/application/use-cases/**/*.ts` (Esquemas Zod)
 
 ---
 

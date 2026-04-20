@@ -2,14 +2,17 @@
   "name": "jauv-studio-pos",
   "version": "2.5.0",
   "description": "Sistema POS para JAUV Studio - Papelería Venezuela",
-  "main": "electron/main.js",
+  "main": "dist-backend/main.js",
   "author": "JAUV Studio",
   "license": "ISC",
   "scripts": {
-    "dev": "concurrently -k \"npm run vite\" \"npm run electron:dev\"",
+    "dev": "concurrently -k \"npm run vite\" \"npm run build:backend-watch\" \"npm run electron:dev\"",
     "vite": "vite --host",
+    "build:backend": "tsc -p tsconfig.backend.json",
+    "build:backend-watch": "tsc -w -p tsconfig.backend.json",
     "electron:dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-    "build": "vite build && electron-builder"
+    "build": "npm run build:backend && vite build && electron-builder",
+    "test": "jest"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -28,16 +31,22 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.6.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^35.0.0",
     "electron-builder": "^25.1.8",
+    "jest": "^30.3.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.9",
+    "typescript": "^6.0.3",
     "vite": "^6.2.1",
-    "wait-on": "^8.0.3"
+    "wait-on": "^8.0.3",
+    "zod": "^4.3.6"
   },
   "build": {
     "appId": "com.jauvstudio.pos",
@@ -50,6 +59,7 @@
     },
     "files": [
       "dist/**/*",
+      "dist-backend/**/*",
       "electron/**/*"
     ],
     "extraResources": [

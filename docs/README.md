@@ -60,9 +60,12 @@
 |------------|-----|
 | Electron | Framework de escritorio (Windows/Linux/macOS) |
 | React 19 | Interfaz de usuario |
+| TypeScript | Lenguaje para el Backend (Node.js) |
 | Vite | Build tool y dev server |
 | Tailwind CSS | Estilos utilitarios |
-| SQLite (better-sqlite3) | Base de datos local |
+| SQLite (node:sqlite / sqlite3) | Base de datos local |
+| Zod | Validación de esquemas y tipos |
+| Jest / ts-jest | Suite de pruebas unitarias |
 | Express | API HTTP para clientes móviles |
 | Recharts | Gráficos y visualización |
 
@@ -72,22 +75,17 @@
 
 ```
 JAUV Studio/
-├── electron/           # Backend de Electron (Node.js)
-│   ├── main.js        # Punto de entrada de la app
-│   ├── preload.js     # Puente IPC seguro
-│   ├── api-server.js  # Servidor HTTP local (red)
-│   └── database/      # Lógica de base de datos
-│       ├── db.js          # Esquema e inicialización
-│       └── handlers/      # Controladores CRUD por módulo
-├── src/               # Frontend React
-│   ├── context/       # Estado global (AppContext)
-│   ├── pages/         # Vistas de la aplicación
-│   ├── components/    # Componentes reutilizables
-│   ├── App.jsx        # Enrutamiento y layout
-│   └── index.css      # Estilos globales Tailwind
+├── electron/           # Backend de Electron (TypeScript)
+│   ├── application/   # Casos de Uso (Business Logic)
+│   ├── domain/        # Entidades e Interfaces de Repositorio
+│   ├── infrastructure/# Implementaciones (DB, Controllers, DI)
+│   ├── main.ts        # Punto de entrada de la app
+│   └── preload.ts     # Puente IPC seguro
+├── src/               # Frontend React (Javascript/JSX)
 ├── dist/              # Build de producción (React)
-├── dist-electron/     # Empaquetado de Electron
-└── docs/             # 📖 Esta documentación
+├── dist-backend/      # Build de producción (TypeScript Backend)
+├── dist-electron/     # Empaquetado final de la app
+└── docs/             # 📖 Esta documentación aplicación
 ```
 
 ---
@@ -99,7 +97,11 @@ Frontend React (Vite)
          │
          │ IPC (ipcRenderer.invoke)
          ▼
-Electron Main Process (Node.js)
+Main Process (Controllers)
+         │
+         │ Application Use Cases
+         ▼
+Repositories (Infrastructure)
          │
          │ SQLite queries
          ▼
@@ -142,13 +144,13 @@ El sistema consta de **11 tablas principales**:
 # 1. Instalar dependencias
 npm install
 
-# 2. Recompilar SQLite para Electron
-npx @electron/rebuild -f -w better-sqlite3
+# 2. Compilar el Backend (TypeScript)
+npm run build:backend
 
 # 3. Iniciar en desarrollo
 npm run dev
 
-# 4. Construir para producción
+# 4. Construir para producción (Frontend + Backend + App)
 npm run build
 ```
 
