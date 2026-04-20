@@ -10,6 +10,13 @@ const METODO_LABEL = {
   transferencia:<><LuLandmark className="inline mb-1" /> Transferencia</>,
 }
 
+const calcularPagado = (v) => {
+  if (v.pagos?.length || v.abonos?.length) {
+    return [...(v.pagos || []), ...(v.abonos || [])].reduce((acc, p) => acc + Number(p.monto || p.monto_ves || 0), 0)
+  }
+  return (v.total || 0) - (v.saldo_pendiente || 0)
+}
+
 function StatCard({ label, value, sub, red, green }) {
   return (
     <div className="stat-card flex flex-col justify-center">
@@ -42,7 +49,7 @@ function MetodosTable({ pagos }) {
 
 function VentaRow({ v, fmt }) {
   const [open, setOpen] = useState(false)
-  const pagado = (v.total || 0) - (v.saldo_pendiente || 0)
+  const pagado = calcularPagado(v)
 
   return (
     <>
@@ -150,7 +157,7 @@ export default function Reportes() {
     if (!data.ventas.length) return
     const headers = ['ID', 'Fecha', 'Cliente', 'Estado', 'Total', 'Cobrado', 'Pendiente']
     const rows = data.ventas.map(v => {
-      const cobrado = (v.total || 0) - (v.saldo_pendiente || 0)
+      const cobrado = calcularPagado(v)
       return [
         v.id, v.fecha, `"${v.cliente_nombre || ''}"`, v.estado, v.total, cobrado, v.saldo_pendiente
       ].join(',')

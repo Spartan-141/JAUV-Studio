@@ -8,6 +8,13 @@ const METODO_LABEL = {
   transferencia: 'Bs. Transferencia',
 }
 
+const calcularPagado = (v) => {
+  if (v.pagos?.length || v.abonos?.length) {
+    return [...(v.pagos || []), ...(v.abonos || [])].reduce((acc, p) => acc + Number(p.monto || p.monto_ves || 0), 0)
+  }
+  return (v.total || 0) - (v.saldo_pendiente || 0)
+}
+
 function ModificarDeudaModal({ venta, onClose, onSave }) {
   const [montoVes, setMontoVes] = useState(Number(venta.saldo_pendiente || 0).toFixed(2))
   const [saving, setSaving] = useState(false)
@@ -144,7 +151,7 @@ function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
 
   if (!data) return <div className="modal-backdrop"><div className="modal text-center py-10 text-gray-400">Cargando...</div></div>
 
-  const pagado = (data.total || 0) - (data.saldo_pendiente || 0)
+  const pagado = calcularPagado(data)
 
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -284,7 +291,7 @@ export default function CuentasPorCobrar() {
             {loading ? <tr><td colSpan={7} className="text-center py-10 text-gray-500">Cargando...</td></tr>
               : filteredVentas.length === 0 ? <tr><td colSpan={7} className="text-center py-10 text-gray-500">🎉 No se encontraron cuentas pendientes</td></tr>
                 : filteredVentas.map(v => {
-                  const pagado = (v.total || 0) - (v.saldo_pendiente || 0)
+                  const pagado = calcularPagado(v)
                   const pct = v.total > 0 ? ((pagado / v.total) * 100).toFixed(0) : 0
                   return (
                     <tr key={v.id}>
