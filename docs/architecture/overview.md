@@ -74,7 +74,7 @@ src/
 ## 🔄 Flujo de Datos (VES Only)
 
 ### 1. **Inicialización**
-El sistema carga la configuración base y verifica cierres automáticos de días anteriores. No se carga ni se procesa ninguna tasa de cambio global.
+El sistema carga la configuración base y prepara los repositorios para la operación 100% offline. No se carga ni se procesa ninguna tasa de cambio global.
 
 ### 2. **Venta Completa**
 ```javascript

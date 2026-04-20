@@ -138,22 +138,27 @@ interface Pago {
 
 ---
 
-## 📈 Modelo de Cierre de Día
+## 📈 Modelos de Reportes (Dinámicos)
+
+> [!NOTE]
+> El modelo `CierreDia` ha sido descartado en favor de cálculos en tiempo real para evitar inconsistencias de datos.
 
 ```typescript
-interface CierreDia {
-  id: number
-  fecha: string                // 'YYYY-MM-DD'
-  total_ventas: number
-  ingresos: number             // Total VES
-  descuentos: number           
-  pendiente_cobrar: number     
-  ganancia_neta: number        
-  // Snapshots JSON
-  pagos: Array<{ metodo: string, total: number }>
-  abonos: Array<{ metodo: string, total: number }>
-  ventas: any[]                
-  cerrado_en: string           
+interface ReporteResumen {
+  ingresos: number            // Total facturado bruto
+  descuentos: number          
+  pendiente_cobrar: number    // Deuda activa en este rango
+  ganancia_neta: number       // Estimado (Venta - Compra)
+  pagos: Array<{ metodo: string, total_ves: number }>
+}
+
+interface PaginatedVentas {
+  ventas: VentaCabecera[]      // Lista de facturas con sus detalles/pagos
+  total: number               // Total de facturas en el filtro
+  page: number
+  perPage: number
+  pages: number
+  resumen: ReporteResumen      // Métricas calculadas para este filtro
 }
 ```
 

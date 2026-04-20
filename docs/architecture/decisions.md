@@ -235,40 +235,36 @@ app.post('/api/invoke', async (req, res) => {
 
 ## ADR-008: Auto-Cierre de Días en Startup
 
-**Estado:** ✅ Aceptada
+**Estado:** ❌ Obsoleta (V2.6.0) - Supercedida por [ADR-014](#adr-014-eliminación-de-cierres-de-día-en-favor-de-reportes-dinámicos)
 
 **Contexto:**
 El usuario puede olvidar cerrar el día en la app. Sin cierre, los reportes diarios pueden estar incompletos.
 
-**Opción A - Forzar cierre manual:**
-- Pros: El usuario es consciente
-- Cons: Se olvida, datos inconsistentes
+---
 
-**Opción B - Cierre automático en background cada N minutos:**
-- Pros: Asegura datos
-- Cons: Puede interferir con ventas en curso, complejidad de scheduling
+## ADR-014: Eliminación de Cierres de Día en favor de Reportes Dinámicos
 
-**Opción C - Cierre automático en startup:**
-- Pros: Simple, seguro, no interfiere con operación normal
-- Cons: Si hubo ventas tardías después del último cierre manual, se incluyen en el snapshot
+**Estado:** ✅ Aceptada (V2.6.0)
 
-**Decisión:** Opción C + actualización manual opcional.
+**Contexto:**
+El sistema de "Cierre de Día" (ADR-008) obligaba a los usuarios a realizar una acción manual de cierre fiscal para poder ver reportes históricos fidedignos. Esto generaba fricción y posibles inconsistencias si el cierre se hacía con datos incompletos o tasas erróneas.
 
-**Razón:** Garantiza que cada día con ventas tenga al menos un snapshot. El usuario aún puede "Actualizar Cierre" manualmente para incluir ventas de última hora. No hay overhead en runtime normal.
+**Decisión:**
+Eliminar por completo el concepto de snapshots inmutables (`cierres_dia`) y calcular todos los reportes, estadísticas y métricas agregadas directamente de las transacciones de ventas en tiempo real.
+
+**Razones:**
+1. **Transparencia Total**: Los números en los reportes siempre coincidirán con la suma real de las ventas filtradas.
+2. **Menor Fricción para el Usuario**: Se elimina la tarea diaria de "Cierre" y la necesidad de auto-cierres en el startup.
+3. **Flexibilidad**: Permite generar reportes de cualquier rango de fechas y clientes de forma instantánea sin depender de cierres diarios pre-calculados.
 
 **Implementación:**
-```javascript
-// main.js:60-64
-const { autoClosePreviousDays } = require('./database/handlers/reportes')
-const autoClosePreviousDays = () => {
-  // Busca todas las fechas con ventas < hoy
-  // Para cada fecha, upsertCierre(db, fecha, tasa_actual)
-}
-```
+- Se eliminó el controlador de auto-cierre en `main.ts`.
+- Se refactorizó el endpoint `ventas:paginated` para devolver un objeto `resumen` con métricas agregadas dinámicas.
+- Se simplificó la UI de `Reportes.jsx` a una única vista de historial inteligente.
 
 **Consecuencias:**
-- La tasa usada en el auto-cierre es la tasa actual (config), no la tasa de ese día (puede ser diferente)
-- Se registra en consola para auditoría
+- Mayor carga de cómputo en la base de datos para generar reportes extensos (mitigado por la eficiencia de SQLite).
+- Los reportes ya no son "fotos fijas", sino que reflejan el estado actual de la base de datos (incluyendo facturas editadas o anuladas posteriormente).
 
 ---
 

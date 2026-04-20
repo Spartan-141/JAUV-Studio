@@ -103,9 +103,10 @@ Catálogo de servicios (fotocopias, impresiones).
 
 ---
 
-### Tabla `cierres_dia`
+### Tabla `cierres_dia` (OBSOLETA / LEGACY)
 
-Snapshot inmutable del performance diario.
+> [!IMPORTANT]
+> A partir de la versión 2.6.0, esta tabla **ya no es utilizada** por la aplicación. Los reportes se calculan dinámicamente sobre la tabla `ventas` para garantizar datos siempre actualizados en tiempo real. Se mantiene en el esquema físico para compatibilidad con bases de datos antiguas.
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
