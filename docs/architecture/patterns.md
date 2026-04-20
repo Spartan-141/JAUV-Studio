@@ -208,7 +208,7 @@ Tabla `cierres_dia` guarda un **snapshot** con JSON de datos:
 
 ```sql
 INSERT INTO cierres_dia (
-  fecha, tasa_cierre, total_ventas, ingresos_usd, ...,
+  fecha, total_ventas, ingresos, descuentos, ...,
   pagos_json, abonos_json, ventas_json
 )
 ```
@@ -358,7 +358,7 @@ React:
      ProductosRepository.update() o InsumosRepository.ajustarStock()
 4. FOR each pago: VentasRepository.createPago()
 5. uow.commit() → COMMIT TRANSACTION
-6. Return ResultFactory.ok({ id: lastID })
+6. Return ResultFactory.ok({ id: ventaId })
 ```
 
 Si falla cualquier paso: ROLLBACK, error al frontend.
@@ -373,7 +373,7 @@ Si falla cualquier paso: ROLLBACK, error al frontend.
 - **Controladores:** `<Modulo>IpcController.ts` → `VentasIpcController.ts`
 - **Canales IPC:** `<modulo>:<accion>` → `'ventas:create'`, `'config:get'`
 - **Componentes React:** PascalCase → `POS`, `ProductoModal`
-- **Variables camelCase:** `tasa`, `subtotal_usd`
+- **Variables camelCase:** `id`, `subtotal`, `total_ves`
 - **Constantes snake_case UPPER:** no se usa, pero sería `API_PORT`
 
 ---

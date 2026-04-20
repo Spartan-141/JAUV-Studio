@@ -153,7 +153,7 @@ Se necesita un sistema de diseño consistente y rápido de desarrollar. Alternat
 
 ## ADR-006: Moneda Dual (USD Base + VES Convertible)
 
-**Estado:** ✅ Aceptada
+**Estado:** ❌ Supercedida por [ADR-013](#adr-013-migración-a-sistema-de-moneda-única-bolívares)
 
 **Contexto:**
 En Venezuela los precios se manejan en dólares (USD) por la inflación, pero los clientes pagan en bolívares (VES) al tipo de cambio del día. Se necesita:
@@ -368,4 +368,30 @@ El input de búsqueda en POS debe ser responsivo pero no disparar queries en cad
 
 ---
 
-*Documento mantenido como código - actualizar con nuevas decisiones.*
+---
+
+## ADR-013: Migración a Sistema de Moneda Única (Bolívares)
+
+**Estado:** ✅ Aceptada (V2.5.0)
+
+**Contexto:**
+El sistema de moneda dual (ADR-006) introducía una complejidad significativa en el mantenimiento de precios, reportes y conciliación de pagos debido a la volatilidad de la tasa de cambio. Se decidió simplificar el sistema para operar exclusivamente en la moneda local (VES).
+
+**Decisión:**
+Eliminar todo rastro de conversión automática de moneda y establecer el Bolívar (VES) como la moneda base única para inventario, ventas y reportes.
+
+**Razones:**
+1. **Simplicidad**: Elimina la necesidad de actualizar tasas diariamente y reduce errores de redondeo en conversiones.
+2. **Estabilidad del Código**: Simplifica drásticamente el frontend (AppContext, POS) y los esquemas de validación del backend.
+3. **Mantenibilidad**: Prepara el sistema para una futura implementación de multi-moneda más modular y desacoplada en lugar de tenerla integrada en el núcleo del sistema.
+
+**Implementación:**
+- Se eliminaron las columnas de `_usd` de la lógica de negocio (aunque se preservan físicamente por compatibilidad de DB).
+- Se eliminó el widget de tasa de cambio y todas las funciones `toVes`/`toUsd`.
+- Se migraron los datos de prueba y semillas a valores realistas en Bolívares.
+
+**Consecuencias:**
+- El sistema ya no permite fijar precios en Dólares y verlos en Bolívares automáticamente.
+- El histórico de ventas se simplifica a montos totales en VES.
+- Se requiere una carga inicial de precios en la moneda local.
+
