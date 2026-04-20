@@ -92,10 +92,6 @@ app.whenReady().then(async () => {
   // require('./database/handlers/reportes'); // Migrated to DDD
   // require('./database/handlers/mermas'); // Migrated to DDD
 
-  // Auto-close any previous days that weren't closed before the app was shut down
-  const reportesUseCases = container.resolve('ReportesUseCases');
-  try { await reportesUseCases.executeAutoClosePreviousDays(); } catch (e) { console.error('[Startup] Auto-close failed:', e); }
-
   // Start local HTTP API for mobile clients on the same network
   try {
     const { startApiServer } = require('./api-server');

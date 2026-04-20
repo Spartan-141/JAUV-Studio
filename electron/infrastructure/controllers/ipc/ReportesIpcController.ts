@@ -17,24 +17,7 @@ export class ReportesIpcController {
       return result.getValue();
     });
 
-    ipcMain.handle('reportes:cerrar_dia', async () => {
-      const fecha = this.todayStr();
-      const result = await this.useCases.cerrarDia(fecha);
-      if (!result.isSuccess) throw result.getError();
-      return { ok: true, fecha, ...result.getValue() };
-    });
 
-    ipcMain.handle('reportes:historial', async () => {
-      const result = await this.useCases.getHistorialCierres();
-      if (!result.isSuccess) throw result.getError();
-      return result.getValue();
-    });
-
-    ipcMain.handle('reportes:cierre_detalle', async (_e, fecha: string) => {
-      const result = await this.useCases.getCierreDetalle(fecha);
-      if (!result.isSuccess) throw result.getError();
-      return result.getValue();
-    });
 
     ipcMain.handle('reportes:inventario', async () => {
       const result = await this.useCases.getInventarioStats();

@@ -11,19 +11,7 @@ export interface ReporteDiaBasico {
   ventas: any[];
 }
 
-export interface CierreDia extends ReporteDiaBasico {
-  cerrado?: boolean;
-  cerrado_en?: string | null;
-  fecha: string;
-}
 
-export interface CierreDiaHistorico {
-  id: number;
-  fecha: string;
-  total_ventas: number;
-  ingresos: number;
-  cerrado_en: string;
-}
 
 export interface InventarioStats {
   total_productos: number;
@@ -33,14 +21,7 @@ export interface InventarioStats {
 }
 
 export interface IReportesRepository {
-  buildDayData(fecha: string): Promise<Result<ReporteDiaBasico>>;
-  upsertCierre(fecha: string): Promise<Result<ReporteDiaBasico>>;
-  
-  getHoy(fecha: string): Promise<Result<CierreDia>>;
-  getHistorial(): Promise<Result<CierreDiaHistorico[]>>;
-  getCierreDetalle(fecha: string): Promise<Result<any>>;
-  
+  getHoy(fecha: string): Promise<Result<ReporteDiaBasico>>;
   getInventario(): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>>;
   getDashboardMetrics(): Promise<Result<{ trend: any[]; top_productos: any[]; top_deudores: any[] }>>;
-  autoClosePreviousDays(): Promise<void>;
 }

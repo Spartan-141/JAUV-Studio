@@ -58,6 +58,7 @@ export interface VentasPaginationParams {
   fechaDesde?: string;
   fechaHasta?: string;
   estado?: string;
+  cliente?: string;
 }
 
 export interface PaginatedVentas {
@@ -66,6 +67,13 @@ export interface PaginatedVentas {
   page: number;
   perPage: number;
   pages: number;
+  resumen: {
+    ingresos: number;
+    ganancia_neta: number;
+    descuentos: number;
+    pendiente_cobrar: number;
+    pagos: any[];
+  };
 }
 
 export interface IVentasRepository {

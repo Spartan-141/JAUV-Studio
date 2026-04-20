@@ -237,16 +237,6 @@ async function initDb() {
 
     // ─── VES-only Migration: Clean old test data & migrate to VES ──────────
     try {
-      // 1. Clean all old test data (ventas, detalles, pagos, abonos, cierres)
-      console.log('[DB] VES Migration: Cleaning old test data...');
-      await db.exec('DELETE FROM abonos;');
-      await db.exec('DELETE FROM pagos;');
-      await db.exec('DELETE FROM detalle_venta;');
-      await db.exec('DELETE FROM ventas;');
-      await db.exec('DELETE FROM cierres_dia;');
-      await db.exec('DELETE FROM mermas;');
-      console.log('[DB] VES Migration: Old test data cleaned successfully.');
-
       // 2. Migrate all productos to moneda_precio = 'ves'
       await db.run("UPDATE productos SET moneda_precio = 'ves'");
 

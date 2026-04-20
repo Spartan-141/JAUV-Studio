@@ -1,4 +1,4 @@
-import { IReportesRepository, ReporteDiaBasico, CierreDia, CierreDiaHistorico, InventarioStats } from '../../../domain/repositories/interfaces/IReportesRepository';
+import { IReportesRepository, ReporteDiaBasico, InventarioStats } from '../../../domain/repositories/interfaces/IReportesRepository';
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
@@ -14,7 +14,7 @@ export class SqliteReportesRepository implements IReportesRepository {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  async buildDayData(fecha: string): Promise<Result<ReporteDiaBasico>> {
+  async getHoy(fecha: string): Promise<Result<ReporteDiaBasico>> {
     try {
       const dbConn = this.db.getConnection();
       const desde = fecha + ' 00:00:00';
@@ -72,91 +72,7 @@ export class SqliteReportesRepository implements IReportesRepository {
     }
   }
 
-  async upsertCierre(fecha: string): Promise<Result<ReporteDiaBasico>> {
-    try {
-      const dbConn = this.db.getConnection();
-      const dataResult = await this.buildDayData(fecha);
-      if (!dataResult.isSuccess) return dataResult;
-      
-      const data = dataResult.getValue()!;
-      const now = new Date().toLocaleString('sv-SE').replace('T', ' ').slice(0, 19);
-      
-      const params = [
-        1, // tasa_cierre = 1 (neutral, VES-only)
-        data.total_ventas, data.ingresos, 0, // ingresos_ves = 0 (legacy column; ingresos column IS VES)
-        data.descuentos, data.pendiente_cobrar, data.ganancia_neta,
-        JSON.stringify(data.pagos), JSON.stringify(data.abonos), JSON.stringify(data.ventas),
-        now,
-      ];
 
-      await dbConn.run(`INSERT OR IGNORE INTO cierres_dia (fecha) VALUES (?)`, [fecha]);
-      await dbConn.run(`
-        UPDATE cierres_dia SET
-          tasa_cierre = ?, total_ventas = ?, ingresos_usd = ?, ingresos_ves = ?,
-          descuentos_usd = ?, pendiente_cobrar_usd = ?, ganancia_neta_usd = ?,
-          pagos_json = ?, abonos_json = ?, ventas_json = ?, cerrado_en = ?
-        WHERE fecha = ?
-      `, [...params, fecha]);
-
-      return ResultFactory.ok(data);
-    } catch (e) {
-      return ResultFactory.fail(e instanceof Error ? e : String(e));
-    }
-  }
-
-  async getHoy(fecha: string): Promise<Result<CierreDia>> {
-    try {
-      const dbConn = this.db.getConnection();
-      const snapshotRow = await dbConn.get('SELECT cerrado_en FROM cierres_dia WHERE fecha = ?', [fecha]);
-      
-      const dataResult = await this.buildDayData(fecha);
-      if (!dataResult.isSuccess) return ResultFactory.fail(dataResult.getError()!);
-      const data = dataResult.getValue()!;
-
-      return ResultFactory.ok({
-        cerrado: !!snapshotRow,
-        cerrado_en: snapshotRow?.cerrado_en || null,
-        fecha,
-        ...data,
-      });
-    } catch (e) {
-      return ResultFactory.fail(e instanceof Error ? e : String(e));
-    }
-  }
-
-  async getHistorial(): Promise<Result<CierreDiaHistorico[]>> {
-    try {
-      const dbConn = this.db.getConnection();
-      const rows = await dbConn.all(`
-        SELECT id, fecha, total_ventas, ingresos_usd AS ingresos, cerrado_en
-        FROM cierres_dia ORDER BY fecha DESC
-      `);
-      return ResultFactory.ok(rows as CierreDiaHistorico[]);
-    } catch (e) {
-      return ResultFactory.fail(e instanceof Error ? e : String(e));
-    }
-  }
-
-  async getCierreDetalle(fecha: string): Promise<Result<any>> {
-    try {
-      const dbConn = this.db.getConnection();
-      const row = await dbConn.get('SELECT * FROM cierres_dia WHERE fecha = ?', [fecha]);
-      if (!row) return ResultFactory.ok(null);
-
-      return ResultFactory.ok({
-        ...row,
-        ingresos: row.ingresos_usd,
-        descuentos: row.descuentos_usd,
-        pendiente_cobrar: row.pendiente_cobrar_usd,
-        ganancia_neta: row.ganancia_neta_usd,
-        pagos: JSON.parse(row.pagos_json || '[]'),
-        abonos: JSON.parse(row.abonos_json || '[]'),
-        ventas: JSON.parse(row.ventas_json || '[]'),
-      });
-    } catch (e) {
-      return ResultFactory.fail(e instanceof Error ? e : String(e));
-    }
-  }
 
   async getInventario(): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>> {
     try {
@@ -247,28 +163,5 @@ export class SqliteReportesRepository implements IReportesRepository {
     }
   }
 
-  async autoClosePreviousDays(): Promise<void> {
-    try {
-      const dbConn = this.db.getConnection();
-      const today = this.todayStr();
 
-      const pendientes = await dbConn.all(`
-        SELECT DISTINCT date(fecha) AS fecha
-        FROM ventas
-        WHERE date(fecha) < ?
-        ORDER BY fecha ASC
-      `, [today]);
-
-      for (const row of pendientes) {
-        try {
-          await this.upsertCierre((row as any).fecha);
-          console.log(`[Reportes] Auto-closed day: ${(row as any).fecha}`);
-        } catch (e) {
-          console.error(`[Reportes] Failed to auto-close day ${(row as any).fecha}:`, e);
-        }
-      }
-    } catch (e) {
-      console.error(`[Reportes] Auto-close generic failure:`, e);
-    }
-  }
 }

@@ -34,7 +34,7 @@ const CabeceraVentaSchema = z.object({
 export const CrearVentaSchema = z.object({
   cabecera: CabeceraVentaSchema,
   detalles: z.array(DetalleVentaSchema).min(1, 'Debe incluir al menos un producto o servicio'),
-  pagos: z.array(PagoSchema).min(1, 'Debe incluir al menos un pago'),
+  pagos: z.array(PagoSchema),
 });
 
 // ─── Use Cases ──────────────────────────────────────────────────────────────
