@@ -107,13 +107,19 @@ function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
   const [syncingId, setSyncingId] = useState(null)
 
   const loadDetalle = useCallback(async () => {
-    const res = await window.api.invoke('cuentas:get', ventaId)
+    const [res, allServicios] = await Promise.all([
+      window.api.invoke('cuentas:get', ventaId),
+      window.api.invoke('servicios:list').catch(() => [])
+    ])
     setData(res)
     const prices = {}
     for (const d of res.detalles) {
       if (d.tipo === 'producto') {
         const p = await window.api.invoke('productos:get', d.ref_id).catch(() => null)
         if (p) prices[d.id] = { currentVes: p.precio_venta || 0 }
+      } else if (d.tipo === 'servicio') {
+        const svc = allServicios.find(s => s.id === d.ref_id)
+        if (svc) prices[d.id] = { currentVes: svc.precio || 0 }
       }
     }
     setInventoryPrices(prices)
