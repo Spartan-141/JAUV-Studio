@@ -6,7 +6,7 @@ export interface Insumo {
   tipo: string;
   stock_hojas: number;
   stock_minimo: number;
-  costo_por_hoja_usd: number;
+  costo_por_hoja: number;
 }
 
 export interface IInsumosRepository {

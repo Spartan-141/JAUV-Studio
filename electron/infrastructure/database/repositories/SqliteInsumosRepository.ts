@@ -2,6 +2,17 @@ import { IInsumosRepository, Insumo } from '../../../domain/repositories/interfa
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
+function mapInsumo(r: any): Insumo {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    tipo: r.tipo,
+    stock_hojas: r.stock_hojas,
+    stock_minimo: r.stock_minimo,
+    costo_por_hoja: r.costo_por_hoja_usd, // DB column legacy name; value is now VES
+  };
+}
+
 export class SqliteInsumosRepository implements IInsumosRepository {
   private db: Database;
 
@@ -13,7 +24,7 @@ export class SqliteInsumosRepository implements IInsumosRepository {
     try {
       const dbConn = this.db.getConnection();
       const rows = await dbConn.all('SELECT * FROM insumos ORDER BY nombre ASC');
-      return ResultFactory.ok(rows as Insumo[]);
+      return ResultFactory.ok(rows.map(mapInsumo));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -25,7 +36,7 @@ export class SqliteInsumosRepository implements IInsumosRepository {
       const info = await dbConn.run(`
         INSERT INTO insumos (nombre, tipo, stock_hojas, stock_minimo, costo_por_hoja_usd)
         VALUES (?, ?, ?, ?, ?)
-      `, [data.nombre, data.tipo, data.stock_hojas, data.stock_minimo, data.costo_por_hoja_usd]);
+      `, [data.nombre, data.tipo, data.stock_hojas, data.stock_minimo, data.costo_por_hoja]);
       if (!info.lastID) throw new Error('No lastID returned');
       return ResultFactory.ok({ id: info.lastID });
     } catch (e) {
@@ -39,7 +50,7 @@ export class SqliteInsumosRepository implements IInsumosRepository {
       await dbConn.run(`
         UPDATE insumos SET nombre=?, tipo=?, stock_hojas=?,
         stock_minimo=?, costo_por_hoja_usd=? WHERE id=?
-      `, [data.nombre, data.tipo, data.stock_hojas, data.stock_minimo, data.costo_por_hoja_usd, id]);
+      `, [data.nombre, data.tipo, data.stock_hojas, data.stock_minimo, data.costo_por_hoja, id]);
       return ResultFactory.ok(undefined);
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));

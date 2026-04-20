@@ -20,23 +20,24 @@ export class SqliteReportesRepository implements IReportesRepository {
       const desde = fecha + ' 00:00:00';
       const hasta  = fecha + ' 23:59:59';
 
-      const ventas = await dbConn.get(`
+      // Note: _usd columns store VES values for records created after migration
+      const ventasRow = await dbConn.get(`
         SELECT
           COUNT(*) AS total_ventas,
-          SUM(total_usd) AS ingresos_usd,
-          SUM(descuento_otorgado_usd) AS descuentos_usd,
-          SUM(CASE WHEN estado='credito' THEN saldo_pendiente_usd ELSE 0 END) AS pendiente_cobrar_usd
+          SUM(total_usd) AS ingresos,
+          SUM(descuento_otorgado_usd) AS descuentos,
+          SUM(CASE WHEN estado='credito' THEN saldo_pendiente_usd ELSE 0 END) AS pendiente_cobrar
         FROM ventas WHERE fecha BETWEEN ? AND ?
       `, [desde, hasta]);
 
       const pagos = await dbConn.all(`
-        SELECT p.metodo, SUM(p.monto_usd) AS total_usd, SUM(p.monto_ves) AS total_ves
+        SELECT p.metodo, SUM(p.monto_ves) AS total_ves
         FROM pagos p JOIN ventas v ON v.id = p.venta_id
         WHERE v.fecha BETWEEN ? AND ? GROUP BY p.metodo
       `, [desde, hasta]);
 
       const abonos = await dbConn.all(`
-        SELECT a.metodo, SUM(a.monto_usd) AS total_usd, SUM(a.monto_ves) AS total_ves
+        SELECT a.metodo, SUM(a.monto_ves) AS total_ves
         FROM abonos a WHERE a.fecha BETWEEN ? AND ? GROUP BY a.metodo
       `, [desde, hasta]);
 
@@ -47,24 +48,21 @@ export class SqliteReportesRepository implements IReportesRepository {
         v.abonos = await dbConn.all(`SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC`, [v.id]);
       }
 
-      const ingresos_ves = [...pagos, ...abonos].reduce((s, x) => s + (x.total_ves || 0), 0);
-
       const gananciaRow = await dbConn.get(`
-        SELECT SUM((dv.precio_unitario_usd - COALESCE(p.precio_compra_usd, 0)) * dv.cantidad) AS ganancia_bruta_usd
+        SELECT SUM((dv.precio_unitario_usd - COALESCE(p.precio_compra_ves, 0)) * dv.cantidad) AS ganancia_bruta
         FROM detalle_venta dv
         JOIN ventas v ON v.id = dv.venta_id
         LEFT JOIN productos p ON p.id = dv.ref_id AND dv.tipo = 'producto'
         WHERE v.fecha BETWEEN ? AND ?
       `, [desde, hasta]);
-      const ganancia_neta_usd = Math.max(0, (gananciaRow?.ganancia_bruta_usd || 0) - (ventas?.descuentos_usd || 0));
+      const ganancia_neta = Math.max(0, (gananciaRow?.ganancia_bruta || 0) - (ventasRow?.descuentos || 0));
 
       return ResultFactory.ok({
-        total_ventas: ventas?.total_ventas || 0,
-        ingresos_usd: ventas?.ingresos_usd || 0,
-        ingresos_ves,
-        descuentos_usd: ventas?.descuentos_usd || 0,
-        pendiente_cobrar_usd: ventas?.pendiente_cobrar_usd || 0,
-        ganancia_neta_usd: parseFloat(ganancia_neta_usd.toFixed(2)),
+        total_ventas: ventasRow?.total_ventas || 0,
+        ingresos: ventasRow?.ingresos || 0,
+        descuentos: ventasRow?.descuentos || 0,
+        pendiente_cobrar: ventasRow?.pendiente_cobrar || 0,
+        ganancia_neta: parseFloat(ganancia_neta.toFixed(2)),
         pagos,
         abonos,
         ventas: listaVentas,
@@ -74,7 +72,7 @@ export class SqliteReportesRepository implements IReportesRepository {
     }
   }
 
-  async upsertCierre(fecha: string, tasa: number): Promise<Result<ReporteDiaBasico>> {
+  async upsertCierre(fecha: string): Promise<Result<ReporteDiaBasico>> {
     try {
       const dbConn = this.db.getConnection();
       const dataResult = await this.buildDayData(fecha);
@@ -84,9 +82,9 @@ export class SqliteReportesRepository implements IReportesRepository {
       const now = new Date().toLocaleString('sv-SE').replace('T', ' ').slice(0, 19);
       
       const params = [
-        tasa,
-        data.total_ventas, data.ingresos_usd, data.ingresos_ves,
-        data.descuentos_usd, data.pendiente_cobrar_usd, data.ganancia_neta_usd,
+        1, // tasa_cierre = 1 (neutral, VES-only)
+        data.total_ventas, data.ingresos, 0, // ingresos_ves = 0 (legacy column; ingresos column IS VES)
+        data.descuentos, data.pendiente_cobrar, data.ganancia_neta,
         JSON.stringify(data.pagos), JSON.stringify(data.abonos), JSON.stringify(data.ventas),
         now,
       ];
@@ -109,7 +107,7 @@ export class SqliteReportesRepository implements IReportesRepository {
   async getHoy(fecha: string): Promise<Result<CierreDia>> {
     try {
       const dbConn = this.db.getConnection();
-      const snapshotRow = await dbConn.get('SELECT cerrado_en, tasa_cierre FROM cierres_dia WHERE fecha = ?', [fecha]);
+      const snapshotRow = await dbConn.get('SELECT cerrado_en FROM cierres_dia WHERE fecha = ?', [fecha]);
       
       const dataResult = await this.buildDayData(fecha);
       if (!dataResult.isSuccess) return ResultFactory.fail(dataResult.getError()!);
@@ -118,7 +116,6 @@ export class SqliteReportesRepository implements IReportesRepository {
       return ResultFactory.ok({
         cerrado: !!snapshotRow,
         cerrado_en: snapshotRow?.cerrado_en || null,
-        tasa_cierre: snapshotRow?.tasa_cierre || null,
         fecha,
         ...data,
       });
@@ -131,7 +128,7 @@ export class SqliteReportesRepository implements IReportesRepository {
     try {
       const dbConn = this.db.getConnection();
       const rows = await dbConn.all(`
-        SELECT id, fecha, tasa_cierre, total_ventas, ingresos_usd, ingresos_ves, cerrado_en
+        SELECT id, fecha, total_ventas, ingresos_usd AS ingresos, cerrado_en
         FROM cierres_dia ORDER BY fecha DESC
       `);
       return ResultFactory.ok(rows as CierreDiaHistorico[]);
@@ -148,6 +145,10 @@ export class SqliteReportesRepository implements IReportesRepository {
 
       return ResultFactory.ok({
         ...row,
+        ingresos: row.ingresos_usd,
+        descuentos: row.descuentos_usd,
+        pendiente_cobrar: row.pendiente_cobrar_usd,
+        ganancia_neta: row.ganancia_neta_usd,
         pagos: JSON.parse(row.pagos_json || '[]'),
         abonos: JSON.parse(row.abonos_json || '[]'),
         ventas: JSON.parse(row.ventas_json || '[]'),
@@ -157,28 +158,17 @@ export class SqliteReportesRepository implements IReportesRepository {
     }
   }
 
-  async getInventario(tasa: number): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>> {
+  async getInventario(): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>> {
     try {
       const dbConn = this.db.getConnection();
-      const t = parseFloat(tasa as any) || 1;
       const stats = await dbConn.get(`
         SELECT
           COUNT(id) AS total_productos,
           SUM(stock_actual) AS total_articulos,
-          SUM(
-            CASE WHEN moneda_precio = 'ves'
-              THEN (precio_compra_ves / ?) * stock_actual
-              ELSE precio_compra_usd * stock_actual
-            END
-          ) AS inversion_usd,
-          SUM(
-            CASE WHEN moneda_precio = 'ves'
-              THEN ((precio_venta_ves - precio_compra_ves) / ?) * stock_actual
-              ELSE (precio_venta_usd - precio_compra_usd) * stock_actual
-            END
-          ) AS ganancia_potencial_usd
+          SUM(precio_compra_ves * stock_actual) AS inversion,
+          SUM((precio_venta_ves - precio_compra_ves) * stock_actual) AS ganancia_potencial
         FROM productos
-      `, [t, t]);
+      `);
 
       const bajo_stock = await dbConn.all(`
         SELECT id, codigo, nombre, marca, stock_actual, stock_minimo
@@ -187,7 +177,15 @@ export class SqliteReportesRepository implements IReportesRepository {
         ORDER BY stock_actual ASC, nombre ASC
       `);
 
-      return ResultFactory.ok({ stats: stats as InventarioStats, bajo_stock });
+      return ResultFactory.ok({
+        stats: {
+          total_productos: stats?.total_productos || 0,
+          total_articulos: stats?.total_articulos || 0,
+          inversion: stats?.inversion || 0,
+          ganancia_potencial: stats?.ganancia_potencial || 0,
+        },
+        bajo_stock
+      });
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -254,9 +252,6 @@ export class SqliteReportesRepository implements IReportesRepository {
       const dbConn = this.db.getConnection();
       const today = this.todayStr();
 
-      const cfg = await dbConn.get(`SELECT valor FROM configuracion WHERE clave = 'tasa_del_dia'`);
-      const tasa = parseFloat(cfg?.valor || '1');
-
       const pendientes = await dbConn.all(`
         SELECT DISTINCT date(fecha) AS fecha
         FROM ventas
@@ -266,7 +261,7 @@ export class SqliteReportesRepository implements IReportesRepository {
 
       for (const row of pendientes) {
         try {
-          await this.upsertCierre((row as any).fecha, tasa);
+          await this.upsertCierre((row as any).fecha);
           console.log(`[Reportes] Auto-closed day: ${(row as any).fecha}`);
         } catch (e) {
           console.error(`[Reportes] Failed to auto-close day ${(row as any).fecha}:`, e);

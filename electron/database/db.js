@@ -49,7 +49,7 @@ async function initDb() {
         precio_venta_usd  REAL NOT NULL DEFAULT 0,
         precio_compra_ves REAL NOT NULL DEFAULT 0,
         precio_venta_ves  REAL NOT NULL DEFAULT 0,
-        moneda_precio     TEXT DEFAULT 'usd',
+        moneda_precio     TEXT DEFAULT 'ves',
         stock_actual      INTEGER NOT NULL DEFAULT 0,
         stock_minimo      INTEGER NOT NULL DEFAULT 0,
         categoria_id      INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
@@ -69,9 +69,9 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS servicios (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL UNIQUE,
-        precio_usd REAL NOT NULL,
+        precio_usd REAL NOT NULL DEFAULT 0,
         precio_ves REAL NOT NULL DEFAULT 0,
-        moneda_precio TEXT DEFAULT 'usd',
+        moneda_precio TEXT DEFAULT 'ves',
         insumo_id INTEGER REFERENCES insumos(id) ON DELETE SET NULL,
         activo INTEGER DEFAULT 1
       );
@@ -82,7 +82,7 @@ async function initDb() {
         subtotal_usd REAL NOT NULL,
         descuento_otorgado_usd REAL NOT NULL DEFAULT 0,
         total_usd REAL NOT NULL,
-        tasa_cambio REAL NOT NULL,
+        tasa_cambio REAL NOT NULL DEFAULT 1,
         estado TEXT NOT NULL DEFAULT 'pagada',
         cliente_nombre TEXT DEFAULT '',
         saldo_pendiente_usd REAL NOT NULL DEFAULT 0,
@@ -105,7 +105,7 @@ async function initDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         venta_id INTEGER NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
         metodo TEXT NOT NULL,
-        monto_usd REAL NOT NULL,
+        monto_usd REAL NOT NULL DEFAULT 0,
         monto_ves REAL DEFAULT 0,
         fecha TEXT DEFAULT (datetime('now','localtime'))
       );
@@ -114,7 +114,7 @@ async function initDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         venta_id INTEGER NOT NULL REFERENCES ventas(id) ON DELETE CASCADE,
         metodo TEXT NOT NULL,
-        monto_usd REAL NOT NULL,
+        monto_usd REAL NOT NULL DEFAULT 0,
         monto_ves REAL DEFAULT 0,
         fecha TEXT DEFAULT (datetime('now','localtime'))
       );
@@ -132,7 +132,7 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS cierres_dia (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL UNIQUE,
-        tasa_cierre REAL NOT NULL,
+        tasa_cierre REAL NOT NULL DEFAULT 1,
         total_ventas INTEGER DEFAULT 0,
         ingresos_usd REAL DEFAULT 0,
         ingresos_ves REAL DEFAULT 0,
@@ -150,7 +150,6 @@ async function initDb() {
     await db.exec('BEGIN TRANSACTION;');
 
     const insertConfig = 'INSERT OR IGNORE INTO configuracion VALUES (?, ?)';
-    await db.run(insertConfig, ['tasa_del_dia', '40.00']);
     await db.run(insertConfig, ['nombre_tienda', 'JAUV Studio']);
     await db.run(insertConfig, ['telefono_tienda', '']);
     await db.run(insertConfig, ['direccion_tienda', 'Venezuela']);
@@ -163,23 +162,23 @@ async function initDb() {
     }
 
     const insertInsumo = 'INSERT OR IGNORE INTO insumos (nombre, tipo, stock_hojas, stock_minimo, costo_por_hoja_usd) VALUES (?, ?, ?, ?, ?)';
-    await db.run(insertInsumo, ['Papel Carta', 'carta', 500, 50, 0.003]);
-    await db.run(insertInsumo, ['Papel Oficio', 'oficio', 200, 30, 0.004]);
+    await db.run(insertInsumo, ['Papel Carta', 'carta', 500, 50, 7.20]);
+    await db.run(insertInsumo, ['Papel Oficio', 'oficio', 200, 30, 9.60]);
 
     // Fetch dynamic IDs for seeding services
     const insumoCarta = await db.get('SELECT id FROM insumos WHERE nombre = ?', ['Papel Carta']);
     const insumoOficio = await db.get('SELECT id FROM insumos WHERE nombre = ?', ['Papel Oficio']);
 
     if (insumoCarta && insumoOficio) {
-      const insertServicio = 'INSERT OR IGNORE INTO servicios (nombre, precio_usd, insumo_id) VALUES (?, ?, ?)';
-      await db.run(insertServicio, ['Copia B/N Carta', 0.05, insumoCarta.id]);
-      await db.run(insertServicio, ['Copia Color Carta', 0.15, insumoCarta.id]);
-      await db.run(insertServicio, ['Impresión B/N Carta', 0.05, insumoCarta.id]);
-      await db.run(insertServicio, ['Impresión Color Carta', 0.20, insumoCarta.id]);
-      await db.run(insertServicio, ['Copia B/N Oficio', 0.07, insumoOficio.id]);
-      await db.run(insertServicio, ['Copia Color Oficio', 0.18, insumoOficio.id]);
-      await db.run(insertServicio, ['Impresión B/N Oficio', 0.07, insumoOficio.id]);
-      await db.run(insertServicio, ['Impresión Color Oficio', 0.25, insumoOficio.id]);
+      const insertServicio = 'INSERT OR IGNORE INTO servicios (nombre, precio_usd, precio_ves, moneda_precio, insumo_id) VALUES (?, ?, ?, ?, ?)';
+      await db.run(insertServicio, ['Copia B/N Carta', 0, 2.00, 'ves', insumoCarta.id]);
+      await db.run(insertServicio, ['Copia Color Carta', 0, 6.00, 'ves', insumoCarta.id]);
+      await db.run(insertServicio, ['Impresión B/N Carta', 0, 2.00, 'ves', insumoCarta.id]);
+      await db.run(insertServicio, ['Impresión Color Carta', 0, 8.00, 'ves', insumoCarta.id]);
+      await db.run(insertServicio, ['Copia B/N Oficio', 0, 2.80, 'ves', insumoOficio.id]);
+      await db.run(insertServicio, ['Copia Color Oficio', 0, 7.20, 'ves', insumoOficio.id]);
+      await db.run(insertServicio, ['Impresión B/N Oficio', 0, 2.80, 'ves', insumoOficio.id]);
+      await db.run(insertServicio, ['Impresión Color Oficio', 0, 10.00, 'ves', insumoOficio.id]);
     }
 
     await db.exec('COMMIT;');
@@ -195,14 +194,14 @@ async function initDb() {
     try {
       await db.run('ALTER TABLE productos ADD COLUMN precio_compra_ves REAL NOT NULL DEFAULT 0');
       await db.run('ALTER TABLE productos ADD COLUMN precio_venta_ves REAL NOT NULL DEFAULT 0');
-      await db.run("ALTER TABLE productos ADD COLUMN moneda_precio TEXT DEFAULT 'usd'");
+      await db.run("ALTER TABLE productos ADD COLUMN moneda_precio TEXT DEFAULT 'ves'");
       console.log('[DB] Migration: added dual-pricing columns to productos');
     } catch (_) { /* columns already exist */ }
 
     // Add dual-pricing columns to servicios if they don't exist
     try {
       await db.run('ALTER TABLE servicios ADD COLUMN precio_ves REAL NOT NULL DEFAULT 0');
-      await db.run("ALTER TABLE servicios ADD COLUMN moneda_precio TEXT DEFAULT 'usd'");
+      await db.run("ALTER TABLE servicios ADD COLUMN moneda_precio TEXT DEFAULT 'ves'");
       console.log('[DB] Migration: added dual-pricing columns to servicios');
     } catch (_) { /* columns already exist */ }
 
@@ -234,6 +233,32 @@ async function initDb() {
       }
     } catch (e) {
       console.warn('[DB] Migration: insumos deduplication failed', e.message);
+    }
+
+    // ─── VES-only Migration: Clean old test data & migrate to VES ──────────
+    try {
+      // 1. Clean all old test data (ventas, detalles, pagos, abonos, cierres)
+      console.log('[DB] VES Migration: Cleaning old test data...');
+      await db.exec('DELETE FROM abonos;');
+      await db.exec('DELETE FROM pagos;');
+      await db.exec('DELETE FROM detalle_venta;');
+      await db.exec('DELETE FROM ventas;');
+      await db.exec('DELETE FROM cierres_dia;');
+      await db.exec('DELETE FROM mermas;');
+      console.log('[DB] VES Migration: Old test data cleaned successfully.');
+
+      // 2. Migrate all productos to moneda_precio = 'ves'
+      await db.run("UPDATE productos SET moneda_precio = 'ves'");
+
+      // 3. Migrate all servicios to moneda_precio = 'ves'  
+      await db.run("UPDATE servicios SET moneda_precio = 'ves'");
+
+      // 4. Remove tasa_del_dia from config (no longer needed)
+      await db.run("DELETE FROM configuracion WHERE clave = 'tasa_del_dia'");
+
+      console.log('[DB] VES Migration: All data migrated to VES-only successfully.');
+    } catch (e) {
+      console.warn('[DB] VES Migration warning:', e.message);
     }
 
     console.log('[DB] Database initialized successfully.');

@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { LuBanknote, LuSmartphone, LuLandmark, LuSearch, LuUser, LuTrash2, LuPlus, LuMinus, LuCreditCard, LuX, LuDollarSign, LuShoppingCart, LuCircleCheck, LuClipboardList, LuCamera } from 'react-icons/lu'
+import { LuBanknote, LuSmartphone, LuLandmark, LuSearch, LuUser, LuTrash2, LuPlus, LuMinus, LuCreditCard, LuX, LuShoppingCart, LuCircleCheck, LuClipboardList, LuCamera } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import { format } from 'date-fns'
 import AlertModal from '../components/AlertModal.jsx'
 import ScannerModal from '../components/ScannerModal.jsx'
 
 const METODOS = [
-  { key: 'efectivo_usd', label: '$ Efectivo USD', icon: <LuDollarSign /> },
-  { key: 'efectivo_ves', label: 'Bs. Efectivo', icon: <LuBanknote /> },
-  { key: 'pago_movil',   label: 'Bs. Pago Móvil', icon: <LuSmartphone /> },
-  { key: 'transferencia',label: 'Bs. Transferencia', icon: <LuLandmark /> },
+  { key: 'efectivo_ves',  label: 'Bs. Efectivo',       icon: <LuBanknote /> },
+  { key: 'pago_movil',    label: 'Bs. Pago Móvil',     icon: <LuSmartphone /> },
+  { key: 'transferencia', label: 'Bs. Transferencia',  icon: <LuLandmark /> },
 ]
 
 // ── Ticket printing ───────────────────────────────────────────────────────────
-function printTicket({ venta, detalles, pagos, config, tasa }) {
+function printTicket({ venta, detalles, pagos, config }) {
   const w = window.open('', '_blank', 'width=350,height=600')
   const ancho = config?.impresora_ancho === '58' ? '58mm' : '80mm'
-  const total_ves = (venta.total_usd * tasa).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -39,46 +37,32 @@ function printTicket({ venta, detalles, pagos, config, tasa }) {
   <div class="divider"></div>
   ${detalles.map(d=>`
     <p class="bold">${d.nombre}</p>
-    <div class="row"><span>${d.cantidad} x $${Number(d.precio_unitario_usd).toFixed(2)}</span><span>$${Number(d.subtotal_usd).toFixed(2)}</span></div>
+    <div class="row"><span>${d.cantidad} x Bs.${Number(d.precio_unitario).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})}</span><span>Bs.${Number(d.subtotal).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
   `).join('')}
   <div class="divider"></div>
-  ${venta.descuento_otorgado_usd > 0 ? `<div class="row"><span>Descuento:</span><span>-$${Number(venta.descuento_otorgado_usd).toFixed(2)}</span></div>` : ''}
-  <div class="row total"><span>TOTAL:</span><span>$${Number(venta.total_usd).toFixed(2)}</span></div>
-  <div class="row small"><span></span><span>Bs. ${total_ves}</span></div>
+  ${venta.descuento_otorgado > 0 ? `<div class="row"><span>Descuento:</span><span>-Bs.${Number(venta.descuento_otorgado).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>` : ''}
+  <div class="row total"><span>TOTAL:</span><span>Bs.${Number(venta.total).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
   <div class="divider"></div>
-  ${pagos.map(p=>`<div class="row small"><span>${METODOS.find(m=>m.key===p.metodo)?.label||p.metodo}:</span><span>$${Number(p.monto_usd).toFixed(2)}</span></div>`).join('')}
+  ${pagos.map(p=>`<div class="row small"><span>${METODOS.find(m=>m.key===p.metodo)?.label||p.metodo}:</span><span>Bs.${Number(p.monto).toLocaleString('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`).join('')}
   <div class="divider"></div>
   <p class="center small">${config?.ticket_pie || 'Gracias por su compra!'}</p>
-  <p class="center small">Tasa: Bs. ${Number(tasa).toFixed(2)}/$</p>
   </body></html>`)
   w.document.close()
   setTimeout(() => { w.print(); w.close() }, 400)
 }
 
 // ── Payment Modal ─────────────────────────────────────────────────────────────
-function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onConfirm, onError }) {
-  const [pagos, setPagos] = useState({ efectivo_usd: '', efectivo_ves: '', pago_movil: '', transferencia: '' })
+function PagoModal({ totalFinal, onClose, onConfirm, onError }) {
+  const [pagos, setPagos] = useState({ efectivo_ves: '', pago_movil: '', transferencia: '' })
   const [clienteNombre, setClienteNombre] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const totalPagadoVes = Object.entries(pagos).reduce((acc, [key, val]) => {
-    if (!val || val === '') return acc
-    const num = parseFloat(val) || 0
-    if (key === 'efectivo_usd') return acc + (num * tasa)
-    return acc + num
-  }, 0)
+  const totalPagado = Object.values(pagos).reduce((acc, val) => acc + (parseFloat(val) || 0), 0)
+  const falta = Math.max(0, totalFinal - totalPagado)
+  const vuelto = totalPagado > totalFinal ? totalPagado - totalFinal : 0
+  const esCredito = falta > 0.05
 
-  const totalPagadoUsd = totalPagadoVes / tasa
-
-  const faltaVes = Math.max(0, exactTotalVes - totalPagadoVes)
-  const faltaUsd = faltaVes / tasa
-  
-  const vueltoVes = totalPagadoVes > exactTotalVes ? totalPagadoVes - exactTotalVes : 0
-  const vueltoUsd = vueltoVes / tasa
-
-  // Credit evaluation relies strictly on VES difference with slight tolerance for float issues
-  const esCredito = faltaVes > 0.05
-
+  const fmt = (v) => `Bs. ${Number(v || 0).toLocaleString('es-VE', { maximumFractionDigits: 2 })}`
 
   const confirm = async () => {
     if (esCredito && !clienteNombre.trim()) { onError('Se requiere el nombre del cliente cuando la venta es a crédito.'); return; }
@@ -86,17 +70,8 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
     try {
       const pagosArr = Object.entries(pagos)
         .filter(([_, v]) => parseFloat(v) > 0)
-        .map(([key, val]) => {
-          const num = parseFloat(val) || 0
-          const isVes = key !== 'efectivo_usd'
-          return {
-            metodo: key,
-            monto_usd: isVes ? num / tasa : num,
-            monto_ves: isVes ? num : num * tasa,
-          }
-        })
-
-      await onConfirm({ pagosArr, clienteNombre, esCredito, falta: esCredito ? faltaUsd : 0 })
+        .map(([key, val]) => ({ metodo: key, monto: parseFloat(val) || 0 }))
+      await onConfirm({ pagosArr, clienteNombre, esCredito, falta: esCredito ? falta : 0 })
     } finally { setSaving(false) }
   }
 
@@ -110,11 +85,10 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
 
         <div className="bg-brand-900/30 border border-brand-500/30 rounded-xl p-4 mb-5 text-center">
           <p className="text-gray-400 text-sm">Total a cobrar</p>
-          <p className="text-3xl font-bold text-white">Bs. {exactTotalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</p>
-          <p className="text-sm text-gray-400">${Number(totalFinal).toFixed(2)} USD</p>
+          <p className="text-3xl font-bold text-white">{fmt(totalFinal)}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           {METODOS.map(m => (
             <div key={m.key}>
               <label className="label">{m.icon} {m.label}</label>
@@ -124,27 +98,26 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
           ))}
         </div>
 
-        {/* Summary */}
         <div className="bg-surface-700 rounded-xl p-4 space-y-2 text-sm mb-4">
-          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">Bs. {totalPagadoVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${totalPagadoUsd.toFixed(2)}</span></div>
-          {esCredito && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">Bs. {faltaVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${faltaUsd.toFixed(2)}</span></div>}
-          {(vueltoUsd > 0.005 || vueltoVes > 0.5) && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">Bs. {vueltoVes.toLocaleString('es-VE',{maximumFractionDigits:2})} / ${vueltoUsd.toFixed(2)}</span></div>}
+          <div className="flex justify-between"><span className="text-gray-400">Total pagado:</span><span className="text-white font-semibold">{fmt(totalPagado)}</span></div>
+          {esCredito && <div className="flex justify-between"><span className="text-red-400">Falta por pagar:</span><span className="text-red-400 font-bold">{fmt(falta)}</span></div>}
+          {vuelto > 0.5 && <div className="flex justify-between"><span className="text-accent-green">Vuelto:</span><span className="text-accent-green font-bold">{fmt(vuelto)}</span></div>}
         </div>
 
         <div className={`mb-4 p-3 rounded-xl border ${esCredito ? 'bg-accent-yellow/10 border-accent-yellow/30' : 'bg-surface-700 border-white/5'}`}>
           {esCredito && <p className="text-accent-yellow text-sm mb-2">⚠️ Esta venta quedará como <strong>crédito</strong>. Se requiere nombre del cliente.</p>}
-          <input 
-            className="input" 
-            required={esCredito} 
+          <input
+            className="input"
+            required={esCredito}
             placeholder={esCredito ? "Nombre del cliente *" : "Nombre del cliente (Opcional)"}
-            value={clienteNombre} 
-            onChange={e => setClienteNombre(e.target.value)} 
+            value={clienteNombre}
+            onChange={e => setClienteNombre(e.target.value)}
           />
         </div>
 
         <div className="flex gap-3 justify-end flex-wrap">
           <button onClick={onClose} className="btn-secondary">Cancelar</button>
-          <button onClick={confirm} disabled={saving || (totalPagadoUsd < 0.005 && !esCredito)}
+          <button onClick={confirm} disabled={saving || (totalPagado < 0.05 && !esCredito)}
             className="btn-success btn-lg">
             {saving ? '⏳ Guardando...' : esCredito ? '📋 Guardar como Crédito' : '✅ Confirmar Venta'}
           </button>
@@ -156,24 +129,19 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
 
 // ── Copy service line entry ───────────────────────────────────────────────────
 function ServicioCopioModal({ servicio, onClose, onAdd }) {
-  const { fmt, tasa } = useApp()
+  const { fmt } = useApp()
   const [cant, setCant] = useState(1)
   const [hojas, setHojas] = useState(1)
-  
-  const isVes = servicio.moneda_precio === 'ves'
-  const base_ves = isVes ? servicio.precio_ves : servicio.precio_usd * tasa
-  const subtotal_ves = base_ves * cant
-  const subtotal_usd = subtotal_ves / tasa
+
+  const precio = servicio.precio || 0
+  const subtotal = precio * cant
 
   const add = () => onAdd({
     tipo: 'servicio', ref_id: servicio.id,
     nombre: servicio.nombre, cantidad: parseInt(cant),
     cantidad_hojas_gastadas: parseInt(hojas),
-    precio_unitario_usd: base_ves / tasa,
-    subtotal_usd: subtotal_usd,
-    precio_unitario_ves: base_ves,
-    subtotal_ves: subtotal_ves,
-    moneda_precio: servicio.moneda_precio || 'usd',
+    precio_unitario: precio,
+    subtotal: subtotal,
     insumo_id: servicio.insumo_id,
   })
 
@@ -191,8 +159,8 @@ function ServicioCopioModal({ servicio, onClose, onAdd }) {
             <input className="input" type="number" min="1" value={hojas} onChange={e=>setHojas(e.target.value)} />
             <p className="text-xs text-gray-500 mt-1">Se cobran {cant} copias pero se descuentan {hojas} hojas del inventario.</p></div>
           <div className="bg-surface-700 rounded-xl p-3 text-sm">
-            <div className="flex justify-between"><span className="text-gray-400">Subtotal:</span><span className="font-bold text-white">{fmt(subtotal_usd)}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">En Bs.:</span><span className="text-gray-300">Bs. {subtotal_ves.toLocaleString('es-VE',{maximumFractionDigits:2})}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Precio unitario:</span><span className="font-bold text-white">{fmt(precio)}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">Subtotal:</span><span className="font-bold text-white">{fmt(subtotal)}</span></div>
           </div>
           <div className="flex justify-end gap-3">
             <button onClick={onClose} className="btn-secondary">Cancelar</button>
@@ -206,12 +174,12 @@ function ServicioCopioModal({ servicio, onClose, onAdd }) {
 
 // ── POS Main ──────────────────────────────────────────────────────────────────
 export default function POS() {
-  const { fmt, toVes, tasa, config } = useApp()
+  const { fmt, config } = useApp()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [cart, setCart] = useState([])
   const [descuento, setDescuento] = useState('')
-  const [tipoDescuento, setTipoDescuento] = useState('usd') // 'usd', 'ves', 'perc'
+  const [tipoDescuento, setTipoDescuento] = useState('ves') // 'ves', 'perc'
   const [modal, setModal] = useState(null)
   const [selectedResult, setSelectedResult] = useState(null)
   const [lastVenta, setLastVenta] = useState(null)
@@ -250,33 +218,28 @@ export default function POS() {
           return prev
         }
         return prev.map(c => c.ref_id === item.id && c.tipo === 'producto'
-          ? { ...c, cantidad: c.cantidad + 1, subtotal_ves: (c.cantidad + 1) * c.precio_unitario_ves, subtotal_usd: ((c.cantidad + 1) * c.precio_unitario_ves) / tasa }
+          ? { ...c, cantidad: c.cantidad + 1, subtotal: (c.cantidad + 1) * c.precio_unitario }
           : c)
       }
       if (item.stock_actual < 1) {
         setAlertMsg(`No hay stock disponible de ${item.nombre}`)
         return prev
       }
-      const p_ves = item.moneda_precio === 'ves' ? item.precio_venta_ves : item.precio_venta_usd * tasa;
-      const p_usd = p_ves / tasa;
-      return [...prev, { 
-        tipo: 'producto', 
-        ref_id: item.id, 
-        nombre: item.nombre, 
-        cantidad: 1, 
-        precio_unitario_usd: p_usd,
-        subtotal_usd: p_usd, 
-        precio_unitario_ves: p_ves,
-        subtotal_ves: p_ves,
-        moneda_precio: item.moneda_precio,
-        stock_actual: item.stock_actual 
+      const precio = item.precio_venta || 0
+      return [...prev, {
+        tipo: 'producto',
+        ref_id: item.id,
+        nombre: item.nombre,
+        cantidad: 1,
+        precio_unitario: precio,
+        subtotal: precio,
+        stock_actual: item.stock_actual
       }]
     })
     setQuery(''); setResults([]); setShowSearch(false)
   }
 
   const handleScan = async (code) => {
-    // Exact match search for the barcode
     const prods = await window.api.invoke('productos:search', code)
     const exactMatch = prods.find(p => p.codigo === code)
     if (exactMatch) {
@@ -292,45 +255,36 @@ export default function POS() {
       const item = prev[idx]
       if (item.tipo === 'producto' && qty > item.stock_actual) {
         setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
-        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_ves: item.stock_actual * c.precio_unitario_ves, subtotal_usd: (item.stock_actual * c.precio_unitario_ves) / tasa } : c)
+        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal: item.stock_actual * c.precio_unitario } : c)
       }
-      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_ves: qty * c.precio_unitario_ves, subtotal_usd: (qty * c.precio_unitario_ves) / tasa } : c)
+      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal: qty * c.precio_unitario } : c)
     })
   }
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))
   const clearCart = (keepVenta = false) => { setCart([]); setDescuento(''); if (!keepVenta) setLastVenta(null) }
 
-  const subtotal_ves = cart.reduce((s, c) => s + c.subtotal_ves, 0)
-  const subtotal_usd = subtotal_ves / tasa
+  const subtotal = cart.reduce((s, c) => s + c.subtotal, 0)
 
   const valorInput = parseFloat(descuento) || 0
-  let descValVes = 0
+  let descVal = 0
   if (tipoDescuento === 'ves') {
-    descValVes = valorInput
-  } else if (tipoDescuento === 'usd') {
-    descValVes = valorInput * tasa
+    descVal = valorInput
   } else if (tipoDescuento === 'perc') {
-    descValVes = (subtotal_ves * valorInput) / 100
+    descVal = (subtotal * valorInput) / 100
   }
+  if (isNaN(descVal) || descVal < 0) descVal = 0
+  if (descVal > subtotal) descVal = subtotal
 
-  // Safety bounds
-  if (isNaN(descValVes) || descValVes < 0) descValVes = 0
-  if (descValVes > subtotal_ves) descValVes = subtotal_ves
-
-  const descValUsd = descValVes / tasa
-  
-  const totalFinalVes = Math.max(0, subtotal_ves - descValVes)
-  const totalFinalUsd = totalFinalVes / tasa
+  const totalFinal = Math.max(0, subtotal - descVal)
 
   const confirmarVenta = async ({ pagosArr, clienteNombre, esCredito, falta }) => {
     const cabecera = {
-      subtotal_usd: subtotal_usd,
-      descuento_otorgado_usd: descValUsd,
-      total_usd: totalFinalUsd,
-      tasa_cambio: tasa,
+      subtotal,
+      descuento_otorgado: descVal,
+      total: totalFinal,
       estado: esCredito ? 'credito' : 'pagada',
       cliente_nombre: clienteNombre || '',
-      saldo_pendiente_usd: esCredito ? falta : 0,
+      saldo_pendiente: esCredito ? falta : 0,
       notas: '',
     }
     const result = await window.api.invoke('ventas:create', { cabecera, detalles: cart, pagos: pagosArr })
@@ -346,9 +300,6 @@ export default function POS() {
       <div className="flex-1 flex flex-col p-3 sm:p-5 gap-3 sm:gap-4 overflow-hidden min-h-0">
         <div className="flex items-center gap-3">
           <h1 className="page-title whitespace-nowrap">🛒 <span className="hidden sm:inline">Punto de </span>Venta</h1>
-          <div className="ml-auto bg-surface-700 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-gray-400">
-            Tasa: <span className="font-mono text-brand-400 font-bold">Bs. {Number(tasa).toFixed(2)}</span>
-          </div>
         </div>
 
         {/* Search */}
@@ -375,8 +326,7 @@ export default function POS() {
                     {r.codigo && <span className="text-gray-500 text-xs ml-2 font-mono">{r.codigo}</span>}
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-bold text-sm">Bs. {((r.moneda_precio === 'ves' ? r.precio_venta_ves : r.precio_venta_usd * tasa) || (r.moneda_precio === 'ves' ? r.precio_ves : r.precio_usd * tasa) || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-[10px] text-gray-400">{fmt(r.precio_venta_usd || r.precio_usd)} USD</p>
+                    <p className="text-white font-bold text-sm">{fmt(r.precio_venta || r.precio || 0)}</p>
                     {r._type==='producto' && <p className="text-[10px] text-gray-500">Stock: {r.stock_actual}</p>}
                   </div>
                 </button>
@@ -420,12 +370,10 @@ export default function POS() {
                       </div>
                     </td>
                     <td className="text-right hidden sm:table-cell">
-                      <p className="font-semibold text-white">Bs. {item.precio_unitario_ves.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                      <p className="text-[10px] text-gray-500">{fmt(item.precio_unitario_usd)} USD</p>
+                      <p className="font-semibold text-white">{fmt(item.precio_unitario)}</p>
                     </td>
                     <td className="text-right">
-                      <p className="font-bold text-brand-400 text-xs sm:text-sm">Bs. {item.subtotal_ves.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                      <p className="text-[10px] text-gray-400">{fmt(item.subtotal_usd)} USD</p>
+                      <p className="font-bold text-brand-400 text-xs sm:text-sm">{fmt(item.subtotal)}</p>
                     </td>
                     <td><button onClick={()=>removeItem(i)} className="btn-ghost btn-sm text-red-400">✕</button></td>
                   </tr>
@@ -436,7 +384,7 @@ export default function POS() {
         </div>
       </div>
 
-      {/* Right: totals panel — always visible on md+, collapsible on mobile */}
+      {/* Right: totals panel */}
       <div className={`md:w-80 bg-surface-800 border-t md:border-t-0 md:border-l border-white/5 md:flex md:flex-col md:p-5 md:gap-4 ${
         cart.length > 0 ? '' : 'hidden md:flex'
       }`}>
@@ -448,28 +396,24 @@ export default function POS() {
           <span className="font-bold text-white">Resumen del pedido</span>
           <div className="flex items-center gap-3 text-right">
             <div>
-              <p className="text-brand-400 font-bold text-sm">Bs. {totalFinalVes.toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-              <p className="text-gray-400 text-[10px]">{fmt(totalFinalUsd)} USD</p>
+              <p className="text-brand-400 font-bold text-sm">{fmt(totalFinal)}</p>
             </div>
             <span className="text-gray-400 text-xs">{summaryOpen ? '▲' : '▼'}</span>
           </div>
         </button>
 
         {/* Panel content */}
-        <div className={`flex flex-col gap-4 p-4 md:p-0 md:flex-1 ${
-          summaryOpen ? 'flex' : 'hidden md:flex'
-        }`}>
+        <div className={`flex flex-col gap-4 p-4 md:p-0 md:flex-1 ${summaryOpen ? 'flex' : 'hidden md:flex'}`}>
           <h2 className="font-bold text-lg text-white hidden md:block">Resumen</h2>
 
           <div className="space-y-3 md:flex-1">
-            <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal_usd)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-400">Subtotal:</span><span className="text-white">{fmt(subtotal)}</span></div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs text-gray-400">Descuento</label>
                 <div className="flex bg-surface-700 rounded-lg p-0.5 border border-white/5">
                   {[
-                    { id: 'usd', label: '$' },
                     { id: 'ves', label: 'Bs' },
                     { id: 'perc', label: '%' }
                   ].map(t => (
@@ -483,39 +427,28 @@ export default function POS() {
                   ))}
                 </div>
               </div>
-              <input 
-                className="input input-sm" 
-                type="text" 
-                placeholder={tipoDescuento === 'perc' ? "0 %" : tipoDescuento === 'ves' ? "0.00 Bs" : "0.00 $"}
-                value={descuento} 
+              <input
+                className="input input-sm"
+                type="text"
+                placeholder={tipoDescuento === 'perc' ? "0 %" : "0.00 Bs"}
+                value={descuento}
                 onChange={e => {
                   let v = e.target.value;
-                  // Allow empty or just a minus/dot initially
-                  if (v === '' || v === '.') {
-                    setDescuento(v);
-                    return;
-                  }
-                  
-                  // Only allow valid numbers
+                  if (v === '' || v === '.') { setDescuento(v); return; }
                   if (!/^\d*\.?\d*$/.test(v)) return;
-
                   const num = parseFloat(v);
-                  // Validation
                   if (tipoDescuento === 'perc' && num > 100) return;
-                  if (tipoDescuento === 'usd' && num > subtotal_usd) return;
-                  if (tipoDescuento === 'ves' && num > subtotal_ves) return;
-                  
+                  if (tipoDescuento === 'ves' && num > subtotal) return;
                   setDescuento(v);
-                }} 
+                }}
               />
             </div>
 
             <div className="border-t border-white/10 pt-3">
               <div className="flex justify-between items-baseline">
                 <span className="text-gray-300 font-medium">Total Final:</span>
-                <span className="text-2xl font-bold text-brand-400">Bs. {totalFinalVes.toLocaleString('es-VE',{maximumFractionDigits:2})}</span>
+                <span className="text-2xl font-bold text-brand-400">{fmt(totalFinal)}</span>
               </div>
-              <p className="text-right text-xs text-gray-500 mt-1">Equivalente: {fmt(totalFinalUsd)} USD</p>
             </div>
           </div>
 
@@ -523,11 +456,7 @@ export default function POS() {
             <button onClick={() => cart.length && setModal('pago')} disabled={cart.length === 0}
               className="btn-success btn-lg w-full flex flex-col items-center py-2">
               <span className="text-base">💳 COBRAR</span>
-              {cart.length > 0 && (
-                <span className="text-[10px] opacity-90">
-                  Bs. {totalFinalVes.toLocaleString('es-VE', { maximumFractionDigits: 2 })} ({fmt(totalFinalUsd)} USD)
-                </span>
-              )}
+              {cart.length > 0 && <span className="text-[10px] opacity-90">{fmt(totalFinal)}</span>}
             </button>
             <button onClick={clearCart} disabled={cart.length===0} className="btn-ghost w-full text-sm">
               🗑️ Limpiar carrito
@@ -544,7 +473,7 @@ export default function POS() {
 
       {/* Payment modal */}
       {modal === 'pago' && (
-        <PagoModal cart={cart} totalFinal={totalFinalUsd} exactTotalVes={totalFinalVes} tasa={tasa} config={config}
+        <PagoModal totalFinal={totalFinal}
           onClose={()=>setModal(null)} onConfirm={confirmarVenta} onError={setAlertMsg} />
       )}
 
@@ -559,28 +488,19 @@ export default function POS() {
             </p>
             <div className="flex gap-3 justify-center flex-wrap">
               <button onClick={()=>setModal(null)} className="btn-secondary">Cerrar</button>
-              <button onClick={()=>printTicket({...lastVenta, config, tasa})} className="btn-primary">🖨️ Imprimir Ticket</button>
+              <button onClick={()=>printTicket({...lastVenta, config})} className="btn-primary">🖨️ Imprimir Ticket</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Alert Modal */}
       {alertMsg && (
-        <AlertModal
-          title="Aviso"
-          message={alertMsg}
-          onClose={() => setAlertMsg('')}
-        />
+        <AlertModal title="Aviso" message={alertMsg} onClose={() => setAlertMsg('')} />
       )}
 
-      {/* Barcode Scanner Modal */}
       {scannerOpen && (
         <ScannerModal
-          onDetected={(code) => {
-            setScannerOpen(false)
-            handleScan(code)
-          }}
+          onDetected={(code) => { setScannerOpen(false); handleScan(code) }}
           onClose={() => setScannerOpen(false)}
         />
       )}

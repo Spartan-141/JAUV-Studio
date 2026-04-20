@@ -5,11 +5,8 @@ export interface Producto {
   codigo: string;
   nombre: string;
   marca: string;
-  precio_compra_usd: number;
-  precio_venta_usd: number;
-  precio_compra_ves: number;
-  precio_venta_ves: number;
-  moneda_precio: string;
+  precio_compra: number;
+  precio_venta: number;
   stock_actual: number;
   stock_minimo: number;
   categoria_id: number | null;

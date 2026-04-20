@@ -2,6 +2,17 @@ import { IServiciosRepository, Servicio } from '../../../domain/repositories/int
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
+function mapServicio(r: any): Servicio {
+  return {
+    id: r.id,
+    nombre: r.nombre,
+    precio: r.precio_ves,
+    insumo_id: r.insumo_id,
+    activo: r.activo,
+    insumo_nombre: r.insumo_nombre,
+  };
+}
+
 export class SqliteServiciosRepository implements IServiciosRepository {
   private db: Database;
 
@@ -17,7 +28,7 @@ export class SqliteServiciosRepository implements IServiciosRepository {
         LEFT JOIN insumos i ON i.id = s.insumo_id
         ORDER BY s.nombre ASC
       `);
-      return ResultFactory.ok(rows as Servicio[]);
+      return ResultFactory.ok(rows.map(mapServicio));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -28,8 +39,8 @@ export class SqliteServiciosRepository implements IServiciosRepository {
       const dbConn = this.db.getConnection();
       const info = await dbConn.run(`
         INSERT INTO servicios (nombre, precio_usd, precio_ves, moneda_precio, insumo_id)
-        VALUES (?, ?, ?, ?, ?)
-      `, [data.nombre, data.precio_usd || 0, data.precio_ves || 0, data.moneda_precio || 'usd', data.insumo_id || null]);
+        VALUES (?, 0, ?, 'ves', ?)
+      `, [data.nombre, data.precio, data.insumo_id || null]);
       
       if (!info.lastID) throw new Error('No lastID returned');
       return ResultFactory.ok({ id: info.lastID });
@@ -42,8 +53,8 @@ export class SqliteServiciosRepository implements IServiciosRepository {
     try {
       const dbConn = this.db.getConnection();
       await dbConn.run(`
-        UPDATE servicios SET nombre=?, precio_usd=?, precio_ves=?, moneda_precio=?, insumo_id=?, activo=? WHERE id=?
-      `, [data.nombre, data.precio_usd || 0, data.precio_ves || 0, data.moneda_precio || 'usd', data.insumo_id || null, data.activo !== undefined ? data.activo : 1, id]);
+        UPDATE servicios SET nombre=?, precio_usd=0, precio_ves=?, moneda_precio='ves', insumo_id=?, activo=? WHERE id=?
+      `, [data.nombre, data.precio, data.insumo_id || null, data.activo !== undefined ? data.activo : 1, id]);
       return ResultFactory.ok(undefined);
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
@@ -74,7 +85,7 @@ export class SqliteServiciosRepository implements IServiciosRepository {
         ORDER BY s.nombre ASC LIMIT 20
       `, [like]);
       
-      return ResultFactory.ok(rows as Servicio[]);
+      return ResultFactory.ok(rows.map(mapServicio));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }

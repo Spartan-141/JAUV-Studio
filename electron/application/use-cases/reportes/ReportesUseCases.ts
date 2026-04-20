@@ -8,8 +8,8 @@ export class ReportesUseCases {
     return this.repo.getHoy(fecha);
   }
 
-  async cerrarDia(fecha: string, tasa: number): Promise<Result<any>> {
-    return this.repo.upsertCierre(fecha, tasa);
+  async cerrarDia(fecha: string): Promise<Result<any>> {
+    return this.repo.upsertCierre(fecha);
   }
 
   async getHistorialCierres(): Promise<Result<CierreDiaHistorico[]>> {
@@ -20,8 +20,8 @@ export class ReportesUseCases {
     return this.repo.getCierreDetalle(fecha);
   }
 
-  async getInventarioStats(tasa: number): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>> {
-    return this.repo.getInventario(tasa);
+  async getInventarioStats(): Promise<Result<{ stats: InventarioStats; bajo_stock: any[] }>> {
+    return this.repo.getInventario();
   }
 
   async getDashboardMetrics(): Promise<Result<{ trend: any[]; top_productos: any[]; top_deudores: any[] }>> {

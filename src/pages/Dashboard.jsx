@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext.jsx'
-import { LuTrendingUp, LuBadgePercent, LuClock, LuDollarSign, LuPackage, LuUsers, LuCircleCheck } from 'react-icons/lu'
+import { LuTrendingUp, LuBadgePercent, LuClock, LuBanknote, LuPackage, LuUsers, LuCircleCheck } from 'react-icons/lu'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 
 export default function Dashboard() {
-  const { fmt, toVes, tasa } = useApp()
+  const { fmt } = useApp()
   const [stats, setStats] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [ventas, setVentas] = useState([])
@@ -36,10 +36,10 @@ export default function Dashboard() {
   }, [])
 
   const STATS = stats ? [
-    { label: 'Ingresos Hoy',       value: fmt(stats.ingresos_usd), sub: `Bs. ${toVes(stats.ingresos_usd).toLocaleString('es-VE', {maximumFractionDigits:2})}`, color: 'brand-500', icon: <LuTrendingUp />, bg: 'from-brand-600/20 to-brand-900/10' },
-    { label: 'Ganancia Neta',      value: fmt(stats.ganancia_neta_usd), sub: `${stats.total_ventas || 0} ventas cerradas`, color: 'emerald-400', icon: <LuDollarSign />, bg: 'from-emerald-500/20 to-emerald-900/10' },
-    { label: 'Por Cobrar',         value: fmt(stats.pendiente_cobrar_usd), sub: 'Créditos activos', color: 'orange-400', icon: <LuClock />, bg: 'from-orange-500/20 to-orange-900/10' },
-    { label: 'Descuentos',         value: fmt(stats.descuentos_usd), sub: 'Otorgados hoy', color: 'purple-400', icon: <LuBadgePercent />, bg: 'from-purple-500/20 to-purple-900/10' },
+    { label: 'Ingresos Hoy',   value: fmt(stats.ingresos || 0),         sub: `${stats.total_ventas || 0} ventas`, color: 'brand-500', icon: <LuTrendingUp />, bg: 'from-brand-600/20 to-brand-900/10' },
+    { label: 'Ganancia Neta', value: fmt(stats.ganancia_neta || 0),     sub: 'Estimado bruto', color: 'emerald-400', icon: <LuBanknote />, bg: 'from-emerald-500/20 to-emerald-900/10' },
+    { label: 'Por Cobrar',    value: fmt(stats.pendiente_cobrar || 0),  sub: 'Créditos activos', color: 'orange-400', icon: <LuClock />, bg: 'from-orange-500/20 to-orange-900/10' },
+    { label: 'Descuentos',   value: fmt(stats.descuentos || 0),         sub: 'Otorgados hoy', color: 'purple-400', icon: <LuBadgePercent />, bg: 'from-purple-500/20 to-purple-900/10' },
   ] : []
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -64,8 +64,8 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 bg-surface-800/80 backdrop-blur py-2 px-4 rounded-2xl border border-white/5 shadow-xl">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Tasa BCV</span>
-            <span className="font-mono font-bold text-base sm:text-lg text-brand-400">Bs. {Number(tasa).toFixed(2)}</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Moneda</span>
+            <span className="font-mono font-bold text-base sm:text-lg text-brand-400">Bolívar (Bs.)</span>
           </div>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function Dashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                     <XAxis dataKey="fecha" tickFormatter={(str) => format(parseISO(str), 'd MMM', {locale: es})} stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`$${v}`} />
+                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`Bs.${v}`} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="total" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
                   </AreaChart>
@@ -170,7 +170,7 @@ export default function Dashboard() {
                       <div key={v.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-700/20 border border-white/5">
                         <div className="flex items-center gap-3">
                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${v.estado === 'credito' ? 'bg-orange-500/20 text-orange-400' : 'bg-brand-500/20 text-brand-400'}`}>
-                             {v.estado === 'credito' ? <LuClock /> : <LuDollarSign />}
+                             {v.estado === 'credito' ? <LuClock /> : <LuBanknote />}
                            </div>
                            <div>
                              <p className="text-sm text-white font-medium">Venta #{v.id}</p>
@@ -178,7 +178,7 @@ export default function Dashboard() {
                            </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-white mb-1">{fmt(v.total_usd)}</p>
+                          <p className="text-sm font-bold text-white mb-1">{fmt(v.total)}</p>
                           <span className={`${v.estado === 'credito' ? 'badge-yellow' : 'badge-green'} text-[10px] uppercase font-bold tracking-wider`}>
                             {v.estado}
                           </span>

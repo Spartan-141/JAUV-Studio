@@ -8,8 +8,8 @@ export interface DetalleVenta {
   nombre: string;
   cantidad: number;
   cantidad_hojas_gastadas?: number;
-  precio_unitario_usd: number;
-  subtotal_usd: number;
+  precio_unitario: number;
+  subtotal: number;
   insumo_id?: number | null; // Needed context for servicios stock deduction
 }
 
@@ -17,8 +17,7 @@ export interface Pago {
   id?: number;
   venta_id?: number;
   metodo: string;
-  monto_usd: number;
-  monto_ves?: number;
+  monto: number;
   fecha?: string;
 }
 
@@ -26,21 +25,19 @@ export interface Abono {
   id?: number;
   venta_id?: number;
   metodo: string;
-  monto_usd: number;
-  monto_ves?: number;
+  monto: number;
   fecha?: string;
 }
 
 export interface Venta {
   id: number;
   fecha: string;
-  subtotal_usd: number;
-  descuento_otorgado_usd: number;
-  total_usd: number;
-  tasa_cambio: number;
+  subtotal: number;
+  descuento_otorgado: number;
+  total: number;
   estado: 'pagada' | 'pendiente' | 'anulada' | string;
   cliente_nombre: string;
-  saldo_pendiente_usd: number;
+  saldo_pendiente: number;
   notas: string;
   
   detalles?: DetalleVenta[];

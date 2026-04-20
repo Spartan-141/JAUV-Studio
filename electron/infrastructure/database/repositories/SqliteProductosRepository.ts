@@ -2,6 +2,23 @@ import { IProductosRepository, Producto, ProductoFilters } from '../../../domain
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
+function mapProducto(r: any): Producto {
+  return {
+    id: r.id,
+    codigo: r.codigo,
+    nombre: r.nombre,
+    marca: r.marca,
+    precio_compra: r.precio_compra_ves,
+    precio_venta: r.precio_venta_ves,
+    stock_actual: r.stock_actual,
+    stock_minimo: r.stock_minimo,
+    categoria_id: r.categoria_id,
+    descripcion: r.descripcion,
+    created_at: r.created_at,
+    categoria_nombre: r.categoria_nombre,
+  };
+}
+
 export class SqliteProductosRepository implements IProductosRepository {
   private db: Database;
 
@@ -40,7 +57,7 @@ export class SqliteProductosRepository implements IProductosRepository {
       sql += ' ORDER BY p.nombre ASC';
 
       const rows = await dbConn.all(sql, params);
-      return ResultFactory.ok(rows as Producto[]);
+      return ResultFactory.ok(rows.map(mapProducto));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -51,7 +68,7 @@ export class SqliteProductosRepository implements IProductosRepository {
       const dbConn = this.db.getConnection();
       const row = await dbConn.get('SELECT * FROM productos WHERE id = ?', [id]);
       if (!row) return ResultFactory.fail(new Error('Producto no encontrado'));
-      return ResultFactory.ok(row as Producto);
+      return ResultFactory.ok(mapProducto(row));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -68,12 +85,10 @@ export class SqliteProductosRepository implements IProductosRepository {
           moneda_precio,
           stock_actual, stock_minimo, categoria_id, descripcion
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 0, 0, ?, ?, 'ves', ?, ?, ?, ?)
       `, [
         data.codigo, data.nombre, data.marca,
-        data.precio_compra_usd, data.precio_venta_usd,
-        data.precio_compra_ves, data.precio_venta_ves,
-        data.moneda_precio,
+        data.precio_compra, data.precio_venta,
         data.stock_actual, data.stock_minimo, data.categoria_id, data.descripcion
       ]);
       if (!info.lastID) throw new Error('No lastID returned');
@@ -89,17 +104,15 @@ export class SqliteProductosRepository implements IProductosRepository {
       await dbConn.run(`
         UPDATE productos SET
           codigo = ?, nombre = ?, marca = ?,
-          precio_compra_usd = ?, precio_venta_usd = ?,
+          precio_compra_usd = 0, precio_venta_usd = 0,
           precio_compra_ves = ?, precio_venta_ves = ?,
-          moneda_precio = ?,
+          moneda_precio = 'ves',
           stock_actual = ?, stock_minimo = ?,
           categoria_id = ?, descripcion = ?
         WHERE id = ?
       `, [
         data.codigo, data.nombre, data.marca,
-        data.precio_compra_usd, data.precio_venta_usd,
-        data.precio_compra_ves, data.precio_venta_ves,
-        data.moneda_precio,
+        data.precio_compra, data.precio_venta,
         data.stock_actual, data.stock_minimo,
         data.categoria_id, data.descripcion,
         id
@@ -131,7 +144,7 @@ export class SqliteProductosRepository implements IProductosRepository {
         WHERE ${this.cleanCol('p.nombre')} LIKE ? OR ${this.cleanCol('p.codigo')} LIKE ? OR ${this.cleanCol('p.marca')} LIKE ?
         ORDER BY p.nombre ASC LIMIT 20
       `, [like, like, like]);
-      return ResultFactory.ok(rows as Producto[]);
+      return ResultFactory.ok(rows.map(mapProducto));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }

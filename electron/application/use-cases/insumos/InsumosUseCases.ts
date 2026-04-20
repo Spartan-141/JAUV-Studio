@@ -7,7 +7,7 @@ export const InsumoBaseSchema = z.object({
   tipo: z.string(),
   stock_hojas: z.number().int().min(0, 'El stock no puede ser negativo'),
   stock_minimo: z.number().int().min(0, 'El stock mínimo no puede ser negativo'),
-  costo_por_hoja_usd: z.number().min(0, 'El costo no puede ser negativo')
+  costo_por_hoja: z.number().min(0, 'El costo no puede ser negativo')
 });
 
 export const CrearInsumoSchema = InsumoBaseSchema;

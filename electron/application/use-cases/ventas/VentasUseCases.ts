@@ -11,25 +11,23 @@ const DetalleVentaSchema = z.object({
   nombre: z.string().min(1),
   cantidad: z.number().int().positive(),
   cantidad_hojas_gastadas: z.number().int().min(0).optional().default(0),
-  precio_unitario_usd: z.number().min(0),
-  subtotal_usd: z.number().min(0),
+  precio_unitario: z.number().min(0),
+  subtotal: z.number().min(0),
   insumo_id: z.number().nullable().optional().transform(v => v ?? null),
 });
 
 const PagoSchema = z.object({
   metodo: z.string().min(1),
-  monto_usd: z.number().min(0),
-  monto_ves: z.number().min(0).optional().default(0),
+  monto: z.number().min(0),
 });
 
 const CabeceraVentaSchema = z.object({
-  subtotal_usd: z.number().min(0),
-  descuento_otorgado_usd: z.number().min(0).optional().default(0),
-  total_usd: z.number().min(0),
-  tasa_cambio: z.number().positive('La tasa de cambio debe ser mayor a 0'),
+  subtotal: z.number().min(0),
+  descuento_otorgado: z.number().min(0).optional().default(0),
+  total: z.number().min(0),
   estado: z.string().default('pagada'),
   cliente_nombre: z.string().optional().default(''),
-  saldo_pendiente_usd: z.number().min(0).optional().default(0),
+  saldo_pendiente: z.number().min(0).optional().default(0),
   notas: z.string().optional().default(''),
 });
 
@@ -85,15 +83,7 @@ export class VentasUseCases {
           return ResultFactory.fail(detResult.getError()!);
         }
 
-        // Deduct stock via corresponding repositories if needed. Note: currently
-        // IProductosRepository doesn't have an expose deductStock method. Let's add it or rely on raw execution.
-        // Actually to follow DDD, the Update method on the repo can be used or we can use the same raw SQL 
-        // to match legacy specifically. But this is the UseCase, so we should rely on Repos.
-        // For simplicity and perfect mirror of behavior without breaking other repos interfaces, 
-        // I will use an improvised raw executor if needed, but wait: IInsumosRepository has ajustarStock.
         if (item.tipo === 'producto') {
-           // We can get the product, calculate new stock, and update it.
-           // Since sqlite doesn't block concurrently within a single connection inside a transaction
            const prodResult = await this.productosRepo.getById(item.ref_id);
            if (prodResult.isSuccess && prodResult.getValue()) {
              const prod = prodResult.getValue();

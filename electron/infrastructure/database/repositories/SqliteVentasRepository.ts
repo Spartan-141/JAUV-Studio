@@ -2,6 +2,46 @@ import { IVentasRepository, Venta, DetalleVenta, Pago, VentasFilters, VentasPagi
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
+// DB columns _usd store VES values (legacy naming, VES semantics)
+function mapRow(r: any): Venta {
+  return {
+    id: r.id,
+    fecha: r.fecha,
+    subtotal: r.subtotal_usd,
+    descuento_otorgado: r.descuento_otorgado_usd,
+    total: r.total_usd,
+    estado: r.estado,
+    cliente_nombre: r.cliente_nombre,
+    saldo_pendiente: r.saldo_pendiente_usd,
+    notas: r.notas,
+  };
+}
+
+function mapDetalle(d: any): DetalleVenta {
+  return {
+    id: d.id,
+    venta_id: d.venta_id,
+    tipo: d.tipo,
+    ref_id: d.ref_id,
+    nombre: d.nombre,
+    cantidad: d.cantidad,
+    cantidad_hojas_gastadas: d.cantidad_hojas_gastadas,
+    precio_unitario: d.precio_unitario_usd,
+    subtotal: d.subtotal_usd,
+    insumo_id: d.insumo_id,
+  };
+}
+
+function mapPago(p: any): Pago {
+  return {
+    id: p.id,
+    venta_id: p.venta_id,
+    metodo: p.metodo,
+    monto: p.monto_ves,
+    fecha: p.fecha,
+  };
+}
+
 export class SqliteVentasRepository implements IVentasRepository {
   private db: Database;
 
@@ -12,13 +52,14 @@ export class SqliteVentasRepository implements IVentasRepository {
   async create(venta: Omit<Venta, 'id' | 'fecha' | 'detalles' | 'pagos' | 'abonos'>): Promise<Result<number>> {
     try {
       const dbConn = this.db.getConnection();
+      // Write VES values into _usd columns (legacy column names, VES semantics)
       const info = await dbConn.run(`
         INSERT INTO ventas (subtotal_usd, descuento_otorgado_usd, total_usd, tasa_cambio, estado, cliente_nombre, saldo_pendiente_usd, notas)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?)
       `, [
-        venta.subtotal_usd, venta.descuento_otorgado_usd, venta.total_usd,
-        venta.tasa_cambio, venta.estado, venta.cliente_nombre || '',
-        venta.saldo_pendiente_usd, venta.notas || ''
+        venta.subtotal, venta.descuento_otorgado, venta.total,
+        venta.estado, venta.cliente_nombre || '',
+        venta.saldo_pendiente, venta.notas || ''
       ]);
       
       if (!info.lastID) throw new Error('No lastID returned upon venta creation');
@@ -36,7 +77,7 @@ export class SqliteVentasRepository implements IVentasRepository {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         ventaId, item.tipo, item.ref_id, item.nombre, item.cantidad,
-        item.cantidad_hojas_gastadas || 0, item.precio_unitario_usd, item.subtotal_usd
+        item.cantidad_hojas_gastadas || 0, item.precio_unitario, item.subtotal
       ]);
       return ResultFactory.ok(undefined);
     } catch (e) {
@@ -49,8 +90,8 @@ export class SqliteVentasRepository implements IVentasRepository {
       const dbConn = this.db.getConnection();
       await dbConn.run(`
         INSERT INTO pagos (venta_id, metodo, monto_usd, monto_ves)
-        VALUES (?, ?, ?, ?)
-      `, [ventaId, pago.metodo, pago.monto_usd, pago.monto_ves || 0]);
+        VALUES (?, ?, 0, ?)
+      `, [ventaId, pago.metodo, pago.monto]);
       return ResultFactory.ok(undefined);
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
@@ -73,7 +114,7 @@ export class SqliteVentasRepository implements IVentasRepository {
       if (filters.limit) { sql += ' LIMIT ?'; params.push(filters.limit); }
 
       const rows = await dbConn.all(sql, params);
-      return ResultFactory.ok(rows as Venta[]);
+      return ResultFactory.ok(rows.map(mapRow));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -89,7 +130,12 @@ export class SqliteVentasRepository implements IVentasRepository {
       const pagos = await dbConn.all('SELECT * FROM pagos WHERE venta_id = ? ORDER BY id ASC', [id]);
       const abonos = await dbConn.all('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC', [id]);
 
-      return ResultFactory.ok({ ...venta, detalles, pagos, abonos } as Venta);
+      return ResultFactory.ok({
+        ...mapRow(venta),
+        detalles: detalles.map(mapDetalle),
+        pagos: pagos.map(mapPago),
+        abonos: abonos.map(mapPago),
+      });
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -99,7 +145,7 @@ export class SqliteVentasRepository implements IVentasRepository {
     try {
       const dbConn = this.db.getConnection();
       const rows = await dbConn.all('SELECT * FROM ventas ORDER BY fecha DESC LIMIT ?', [limit]);
-      return ResultFactory.ok(rows as Venta[]);
+      return ResultFactory.ok(rows.map(mapRow));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
@@ -129,13 +175,16 @@ export class SqliteVentasRepository implements IVentasRepository {
       );
 
       for (const v of ventas) {
-        v.detalles = await dbConn.all('SELECT * FROM detalle_venta WHERE venta_id = ? ORDER BY id ASC', [v.id]);
-        v.pagos = await dbConn.all('SELECT * FROM pagos WHERE venta_id = ? ORDER BY id ASC', [v.id]);
-        v.abonos = await dbConn.all('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC', [v.id]);
+        const rawDetalles = await dbConn.all('SELECT * FROM detalle_venta WHERE venta_id = ? ORDER BY id ASC', [v.id]);
+        const rawPagos = await dbConn.all('SELECT * FROM pagos WHERE venta_id = ? ORDER BY id ASC', [v.id]);
+        const rawAbonos = await dbConn.all('SELECT * FROM abonos WHERE venta_id = ? ORDER BY fecha ASC', [v.id]);
+        (v as any).detalles = rawDetalles.map(mapDetalle);
+        (v as any).pagos = rawPagos.map(mapPago);
+        (v as any).abonos = rawAbonos.map(mapPago);
       }
 
       return ResultFactory.ok({
-        ventas: ventas as Venta[],
+        ventas: ventas.map(v => ({ ...mapRow(v), detalles: (v as any).detalles, pagos: (v as any).pagos, abonos: (v as any).abonos })),
         total,
         page,
         perPage,

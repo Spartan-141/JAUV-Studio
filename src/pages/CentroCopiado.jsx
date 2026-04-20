@@ -2,23 +2,30 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
 
-
 // ── Insumo Modal ─────────────────────────────────────────────────────────────
 function InsumoModal({ insumo, onClose, onSave }) {
-  const blank = { nombre: '', tipo: 'carta', stock_hojas: 0, stock_minimo: 0, costo_por_hoja_usd: 0 }
-  const [form, setForm] = useState(insumo || blank)
+  const blank = { nombre: '', tipo: 'carta', stock_hojas: 0, stock_minimo: 0, costo_por_hoja: 0 }
+  const [form, setForm] = useState(insumo ? { ...blank, ...insumo, costo_por_hoja: insumo.costo_por_hoja || 0 } : blank)
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
-    const data = { ...form, stock_hojas: parseInt(form.stock_hojas) || 0, stock_minimo: parseInt(form.stock_minimo) || 0, costo_por_hoja_usd: parseFloat(form.costo_por_hoja_usd) || 0 }
+    const data = {
+      nome: form.nombre,
+      nombre: form.nombre,
+      tipo: form.tipo,
+      stock_hojas: parseInt(form.stock_hojas) || 0,
+      stock_minimo: parseInt(form.stock_minimo) || 0,
+      costo_por_hoja: parseFloat(form.costo_por_hoja) || 0,
+    }
     try {
       if (insumo?.id) await window.api.invoke('insumos:update', { id: insumo.id, ...data })
       else await window.api.invoke('insumos:create', data)
       onSave()
     } finally { setSaving(false) }
   }
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -38,7 +45,9 @@ function InsumoModal({ insumo, onClose, onSave }) {
             <div><label className="label">Stock Hojas</label><input className="input" type="number" min="0" value={form.stock_hojas} onChange={e => set('stock_hojas', e.target.value)} /></div>
             <div><label className="label">Stock Mínimo</label><input className="input" type="number" min="0" value={form.stock_minimo} onChange={e => set('stock_minimo', e.target.value)} /></div>
           </div>
-          <div><label className="label">Costo por Hoja (USD)</label><input className="input" type="number" min="0" step="0.0001" value={form.costo_por_hoja_usd} onChange={e => set('costo_por_hoja_usd', e.target.value)} /></div>
+          <div><label className="label">Costo por Hoja (Bs.)</label>
+            <input className="input" type="number" min="0" step="0.0001" value={form.costo_por_hoja} onChange={e => set('costo_por_hoja', e.target.value)} />
+          </div>
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button type="submit" disabled={saving} className="btn-primary">{saving ? '⏳...' : '💾 Guardar'}</button>
@@ -51,19 +60,22 @@ function InsumoModal({ insumo, onClose, onSave }) {
 
 // ── Servicio Modal ────────────────────────────────────────────────────────────
 function ServicioModal({ servicio, insumos, onClose, onSave }) {
-  const { tasa } = useApp()
-  const blank = { nombre: '', precio_usd: '', precio_ves: '', moneda_precio: 'usd', insumo_id: '', activo: 1 }
-  const [form, setForm] = useState(servicio ? { ...servicio, insumo_id: servicio.insumo_id || '' } : blank)
+  const blank = { nombre: '', precio: '', insumo_id: '', activo: 1 }
+  const [form, setForm] = useState(servicio ? {
+    ...blank, ...servicio,
+    precio: servicio.precio || '',
+    insumo_id: servicio.insumo_id || ''
+  } : blank)
   const [saving, setSaving] = useState(false)
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
-    const data = { 
-      ...form, 
-      precio_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_usd) || 0 : (parseFloat(form.precio_ves) || 0) / tasa,
-      precio_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_ves) || 0 : (parseFloat(form.precio_usd) || 0) * tasa,
-      insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null 
+    const data = {
+      nombre: form.nombre,
+      precio: parseFloat(form.precio) || 0,
+      insumo_id: form.insumo_id ? parseInt(form.insumo_id) : null,
+      activo: form.activo,
     }
     try {
       if (servicio?.id) await window.api.invoke('servicios:update', { id: servicio.id, ...data })
@@ -71,6 +83,7 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
       onSave()
     } finally { setSaving(false) }
   }
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -82,26 +95,10 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
           <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
 
           <div className="pt-2 pb-1 border-t border-white/5">
-            <label className="label">Moneda del Precio Fijo</label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => set('moneda_precio', 'usd')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'usd' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>$ USD</button>
-              <button type="button" onClick={() => set('moneda_precio', 'ves')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'ves' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>Bs. VES</button>
-            </div>
+            <p className="text-xs text-gray-500 bg-surface-700 rounded-lg px-3 py-2 mb-3">💡 El precio siempre se ingresa en <strong>Bolívares (Bs.)</strong></p>
+            <label className="label">Precio (Bs.)</label>
+            <input className="input" type="number" min="0" step="0.01" required value={form.precio} onChange={e => set('precio', e.target.value)} />
           </div>
-
-          {form.moneda_precio === 'usd' ? (
-            <div>
-              <label className="label">Precio Fijo ($ USD)</label>
-              <input className="input" type="number" min="0" step="0.01" required value={form.precio_usd} onChange={e => set('precio_usd', e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">≈ Bs. {((parseFloat(form.precio_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-            </div>
-          ) : (
-            <div>
-              <label className="label">Precio Fijo (Bs. VES)</label>
-              <input className="input" type="number" min="0" step="0.01" required value={form.precio_ves} onChange={e => set('precio_ves', e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">≈ $ {((parseFloat(form.precio_ves) || 0) / tasa).toFixed(4)}</p>
-            </div>
-          )}
 
           <div><label className="label">Insumo (papel que consume)</label>
             <select className="select" value={form.insumo_id} onChange={e => set('insumo_id', e.target.value)}>
@@ -109,6 +106,15 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
               {insumos.map(i => <option key={i.id} value={i.id}>{i.nombre} ({i.stock_hojas} hojas)</option>)}
             </select>
           </div>
+
+          {servicio && (
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="activo_srv" className="accent-brand-500"
+                checked={!!form.activo} onChange={e => set('activo', e.target.checked ? 1 : 0)} />
+              <label htmlFor="activo_srv" className="text-sm text-gray-300">Servicio activo</label>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3">
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button type="submit" disabled={saving} className="btn-primary">{saving ? '⏳...' : '💾 Guardar'}</button>
@@ -119,7 +125,7 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
   )
 }
 
-// ── Ajuste de insumo (agregar/quitar hojas) ───────────────────────────────────
+// ── Ajuste de insumo ─────────────────────────────────────────────────────────
 function AjusteModal({ insumo, onClose, onSave }) {
   const [form, setForm] = useState({ cantidad: '', operacion: 'sumar' })
   const [saving, setSaving] = useState(false)
@@ -131,6 +137,7 @@ function AjusteModal({ insumo, onClose, onSave }) {
       onSave()
     } finally { setSaving(false) }
   }
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -158,13 +165,13 @@ function AjusteModal({ insumo, onClose, onSave }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CentroCopiado() {
-  const { fmt, toVes, tasa } = useApp()
+  const { fmt } = useApp()
   const [tab, setTab] = useState('insumos')
   const [insumos, setInsumos] = useState([])
   const [servicios, setServicios] = useState([])
   const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [confirmDelete, setConfirmDelete] = useState(null) // null | { type, id, nombre }
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const load = useCallback(async () => {
     const [ins, srvs] = await Promise.all([
@@ -176,10 +183,7 @@ export default function CentroCopiado() {
 
   useEffect(() => { load() }, [load])
 
-  const deleteItem = (type, id, nombre) => {
-    setConfirmDelete({ type, id, nombre })
-  }
-
+  const deleteItem = (type, id, nombre) => setConfirmDelete({ type, id, nombre })
   const handleConfirmDelete = async () => {
     if (!confirmDelete) return
     const { type, id } = confirmDelete
@@ -188,19 +192,14 @@ export default function CentroCopiado() {
     load()
   }
 
-  // Memoized table rows — only recalculate when data or tasa changes, not on modal open/close
   const servicioRows = useMemo(() => servicios.map(s => (
     <tr key={s.id}>
       <td className="font-medium text-white">{s.nombre}</td>
       <td className="text-gray-400 text-xs">{s.insumo_nombre || '—'}</td>
-      <td className="text-right font-semibold text-white">
-        {s.moneda_precio === 'ves' ? <span className="text-gray-400 text-sm font-normal">≈ {fmt((s.precio_ves || 0) / tasa)}</span> : fmt(s.precio_usd)}
-      </td>
-      <td className="text-right text-sm">
-        {s.moneda_precio === 'ves'
-          ? <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">Fijo: Bs. {Number(s.precio_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-          : <span className="text-gray-400 text-xs">≈ Bs. {toVes(s.precio_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-        }
+      <td className="text-right">
+        <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">
+          {fmt(s.precio)}
+        </span>
       </td>
       <td><span className={s.activo ? 'badge-green' : 'badge-red'}>{s.activo ? 'Activo' : 'Inactivo'}</span></td>
       <td>
@@ -210,7 +209,7 @@ export default function CentroCopiado() {
         </div>
       </td>
     </tr>
-  )), [servicios, tasa, fmt, toVes])
+  )), [servicios, fmt])
 
   return (
     <div className="page">
@@ -221,22 +220,21 @@ export default function CentroCopiado() {
         </button>
       </div>
 
-      {/* Tabs */}
       <div className="shrink-0 bg-surface-800 rounded-xl p-1 border border-white/5 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
-        {['insumos', 'servicios'].map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            {t === 'insumos' ? '📄 Insumos (Papel)' : '📋 Catálogo de Servicios'}
-          </button>
-        ))}
+          {['insumos', 'servicios'].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              {t === 'insumos' ? '📄 Insumos (Papel)' : '📋 Catálogo de Servicios'}
+            </button>
+          ))}
         </div>
       </div>
 
       {tab === 'insumos' && (
         <div className="card table-wrapper">
           <table>
-            <thead><tr><th>Insumo</th><th>Tipo</th><th className="text-center">Stock Hojas</th><th>Mínimo</th><th>Costo/Hoja</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Insumo</th><th>Tipo</th><th className="text-center">Stock Hojas</th><th>Mínimo</th><th>Costo/Hoja (Bs.)</th><th>Acciones</th></tr></thead>
             <tbody>
               {insumos.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-10 text-gray-500">Sin insumos registrados</td></tr>
@@ -251,7 +249,7 @@ export default function CentroCopiado() {
                       {bajo && <span className="badge-red ml-2">⚠️ bajo</span>}
                     </td>
                     <td className="text-gray-400">{i.stock_minimo}</td>
-                    <td className="text-gray-300">{fmt(i.costo_por_hoja_usd)}/hoja</td>
+                    <td className="text-gray-300">{fmt(i.costo_por_hoja)}/hoja</td>
                     <td>
                       <div className="flex gap-1">
                         <button onClick={() => { setSelected(i); setModal('ajuste') }} className="btn-ghost btn-sm" title="Ajustar stock">📊</button>
@@ -270,10 +268,10 @@ export default function CentroCopiado() {
       {tab === 'servicios' && (
         <div className="card table-wrapper">
           <table>
-            <thead><tr><th>Servicio</th><th>Insumo</th><th className="text-right">Precio USD</th><th className="text-right">Precio Bs.</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Servicio</th><th>Insumo</th><th className="text-right">Precio (Bs.)</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {servicios.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-10 text-gray-500">Sin servicios registrados</td></tr>
+                <tr><td colSpan={5} className="text-center py-10 text-gray-500">Sin servicios registrados</td></tr>
               ) : servicioRows}
             </tbody>
           </table>

@@ -3,9 +3,7 @@ import { Result } from '../../common/Result';
 export interface Servicio {
   id: number;
   nombre: string;
-  precio_usd: number;
-  precio_ves: number;
-  moneda_precio: string;
+  precio: number;
   insumo_id: number | null;
   activo: boolean | number;
   insumo_nombre?: string;

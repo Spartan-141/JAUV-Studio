@@ -17,9 +17,9 @@ export class ReportesIpcController {
       return result.getValue();
     });
 
-    ipcMain.handle('reportes:cerrar_dia', async (_e, { tasa }) => {
+    ipcMain.handle('reportes:cerrar_dia', async () => {
       const fecha = this.todayStr();
-      const result = await this.useCases.cerrarDia(fecha, tasa);
+      const result = await this.useCases.cerrarDia(fecha);
       if (!result.isSuccess) throw result.getError();
       return { ok: true, fecha, ...result.getValue() };
     });
@@ -36,8 +36,8 @@ export class ReportesIpcController {
       return result.getValue();
     });
 
-    ipcMain.handle('reportes:inventario', async (_e, tasa) => {
-      const result = await this.useCases.getInventarioStats(tasa);
+    ipcMain.handle('reportes:inventario', async () => {
+      const result = await this.useCases.getInventarioStats();
       if (!result.isSuccess) throw result.getError();
       return result.getValue();
     });

@@ -4,9 +4,7 @@ import { z } from 'zod';
 
 export const ServicioBaseSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
-  precio_usd: z.number().min(0, 'El precio USD no puede ser negativo'),
-  precio_ves: z.number().min(0, 'El precio VES no puede ser negativo').optional().default(0),
-  moneda_precio: z.string().optional().default('usd'),
+  precio: z.number().min(0, 'El precio no puede ser negativo'),
   insumo_id: z.number().nullable().optional().transform(v => v === undefined ? null : v),
   activo: z.union([z.boolean(), z.number()]).optional().default(1),
 });

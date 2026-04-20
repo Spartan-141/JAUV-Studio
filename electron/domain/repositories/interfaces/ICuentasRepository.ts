@@ -9,6 +9,6 @@ export interface CuentasPaginationParams {
 export interface ICuentasRepository {
   listCreditos(): Promise<Result<Venta[]>>;
   getCredito(ventaId: number): Promise<Result<Venta | null>>;
-  abonar(ventaId: number, abono: any): Promise<Result<{ saldo_pendiente_usd: number; estado: string }>>;
-  ajustarDeuda(ventaId: number, nuevoSaldoUsd: number, nuevaTasa: number): Promise<Result<{ saldo_pendiente_usd: number; tasa_cambio: number; estado: string }>>;
+  abonar(ventaId: number, abono: any): Promise<Result<{ saldo_pendiente: number; estado: string }>>;
+  ajustarDeuda(ventaId: number, nuevoSaldo: number): Promise<Result<{ saldo_pendiente: number; estado: string }>>;
 }

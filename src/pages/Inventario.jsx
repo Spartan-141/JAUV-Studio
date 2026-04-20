@@ -4,7 +4,6 @@ import { useApp } from '../context/AppContext.jsx'
 import JsBarcode from 'jsbarcode'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
 
-
 // ── Barcode display ──────────────────────────────────────────────────────────
 function BarcodeImg({ code }) {
   const ref = useRef(null)
@@ -19,35 +18,42 @@ function BarcodeImg({ code }) {
 
 // ── Product form modal ──────────────────────────────────────────────────────
 function ProductoModal({ producto, categorias, onClose, onSave }) {
-  const { fmt, tasa } = useApp()
+  const { fmt } = useApp()
   const blank = {
     codigo: '', nombre: '', marca: '',
-    precio_compra_usd: '', precio_venta_usd: '',
-    precio_compra_ves: '', precio_venta_ves: '',
-    moneda_precio: 'usd',
+    precio_compra: '',
+    precio_venta: '',
     stock_actual: 0, stock_minimo: 0, categoria_id: '', descripcion: '',
   }
-  const [form, setForm] = useState(producto ? { ...producto, categoria_id: producto.categoria_id || '' } : blank)
+  const [form, setForm] = useState(producto ? {
+    ...blank,
+    ...producto,
+    codigo: producto.codigo || '',
+    precio_compra: producto.precio_compra || '',
+    precio_venta: producto.precio_venta || '',
+    categoria_id: producto.categoria_id || '',
+  } : blank)
   const [saving, setSaving] = useState(false)
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
-  const margin = form.moneda_precio === 'usd'
-    ? (form.precio_venta_usd && form.precio_compra_usd ? (((form.precio_venta_usd - form.precio_compra_usd) / form.precio_compra_usd) * 100).toFixed(1) : null)
-    : (form.precio_venta_ves && form.precio_compra_ves ? (((form.precio_venta_ves - form.precio_compra_ves) / form.precio_compra_ves) * 100).toFixed(1) : null)
+  const margen = form.precio_venta && form.precio_compra
+    ? (((parseFloat(form.precio_venta) - parseFloat(form.precio_compra)) / parseFloat(form.precio_compra)) * 100).toFixed(1)
+    : null
 
   const submit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
       const data = {
-        ...form,
-        precio_compra_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_compra_usd) || 0 : (parseFloat(form.precio_compra_ves) || 0) / tasa,
-        precio_venta_usd: form.moneda_precio === 'usd' ? parseFloat(form.precio_venta_usd) || 0 : (parseFloat(form.precio_venta_ves) || 0) / tasa,
-        precio_compra_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_compra_ves) || 0 : (parseFloat(form.precio_compra_usd) || 0) * tasa,
-        precio_venta_ves: form.moneda_precio === 'ves' ? parseFloat(form.precio_venta_ves) || 0 : (parseFloat(form.precio_venta_usd) || 0) * tasa,
+        codigo: form.codigo,
+        nombre: form.nombre,
+        marca: form.marca,
+        precio_compra: parseFloat(form.precio_compra) || 0,
+        precio_venta: parseFloat(form.precio_venta) || 0,
         stock_actual: parseInt(form.stock_actual) || 0,
         stock_minimo: parseInt(form.stock_minimo) || 0,
         categoria_id: form.categoria_id ? parseInt(form.categoria_id) : null,
+        descripcion: form.descripcion || '',
       }
       if (producto?.id) {
         await window.api.invoke('productos:update', { id: producto.id, ...data })
@@ -87,51 +93,20 @@ function ProductoModal({ producto, categorias, onClose, onSave }) {
                 {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
-            
+
             <div className="col-span-2 pt-2 pb-1 border-t border-white/5">
-              <label className="label">Moneda del Precio Fijo</label>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => set('moneda_precio', 'usd')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'usd' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>$ USD (Dólares)</button>
-                <button type="button" onClick={() => set('moneda_precio', 'ves')} className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${form.moneda_precio === 'ves' ? 'bg-brand-600 text-white' : 'bg-surface-700 text-gray-400 hover:text-white'}`}>Bs. VES (Bolívares)</button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                La moneda seleccionada no cambiará automáticamente con la tasa del día.
-              </p>
+              <p className="text-xs text-gray-500 bg-surface-700 rounded-lg px-3 py-2">💡 Todos los precios en <strong>Bolívares (Bs.)</strong></p>
             </div>
 
-            {form.moneda_precio === 'usd' ? (
-              <>
-                <div>
-                  <label className="label">Precio Compra ($ USD)</label>
-                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra_usd} onChange={e => set('precio_compra_usd', e.target.value)} />
-                  <p className="text-xs text-gray-500 mt-1">≈ Bs. {((parseFloat(form.precio_compra_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-                </div>
-                <div>
-                  <label className="label">Precio Venta ($ USD)</label>
-                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta_usd} onChange={e => set('precio_venta_usd', e.target.value)} />
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-500">≈ Bs. {((parseFloat(form.precio_venta_usd) || 0) * tasa).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</p>
-                    {margin && <p className="text-xs font-semibold text-accent-green">Margen: {margin}%</p>}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="label">Precio Compra (Bs. VES)</label>
-                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra_ves} onChange={e => set('precio_compra_ves', e.target.value)} />
-                  <p className="text-xs text-gray-500 mt-1">≈ $ {((parseFloat(form.precio_compra_ves) || 0) / tasa).toFixed(4)}</p>
-                </div>
-                <div>
-                  <label className="label">Precio Venta (Bs. VES)</label>
-                  <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta_ves} onChange={e => set('precio_venta_ves', e.target.value)} />
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-500">≈ $ {((parseFloat(form.precio_venta_ves) || 0) / tasa).toFixed(4)}</p>
-                    {margin && <p className="text-xs font-semibold text-accent-green">Margen: {margin}%</p>}
-                  </div>
-                </div>
-              </>
-            )}
+            <div>
+              <label className="label">Precio Compra (Bs.)</label>
+              <input className="input" type="number" min="0" step="0.01" required value={form.precio_compra} onChange={e => set('precio_compra', e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Precio Venta (Bs.)</label>
+              <input className="input" type="number" min="0" step="0.01" required value={form.precio_venta} onChange={e => set('precio_venta', e.target.value)} />
+              {margen && <p className="text-xs font-semibold text-accent-green mt-1">Margen: {margen}%</p>}
+            </div>
 
             <div>
               <label className="label">Stock Actual</label>
@@ -165,8 +140,7 @@ function MermaModal({ producto, onClose, onSave }) {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const submit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
+    e.preventDefault(); setSaving(true)
     try {
       await window.api.invoke('mermas:create', {
         producto_id: producto.id,
@@ -224,7 +198,7 @@ function MermaModal({ producto, onClose, onSave }) {
 function CategoryManagerModal({ onClose, onChanged }) {
   const [cats, setCats] = useState([])
   const [allProds, setAllProds] = useState([])
-  const [selectedCat, setSelectedCat] = useState(null) // category object currently being assigned
+  const [selectedCat, setSelectedCat] = useState(null)
   const [checkedIds, setCheckedIds] = useState(new Set())
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
@@ -246,7 +220,6 @@ function CategoryManagerModal({ onClose, onChanged }) {
 
   const selectCat = (cat) => {
     setSelectedCat(cat)
-    // Pre-check all products currently in this category
     setCheckedIds(new Set(allProds.filter(p => p.categoria_id === cat.id).map(p => p.id)))
     setProdSearch('')
   }
@@ -272,21 +245,15 @@ function CategoryManagerModal({ onClose, onChanged }) {
     if (!selectedCat) return
     setSaving(true)
     try {
-      await window.api.invoke('categorias:bulk_assign', {
-        categoria_id: selectedCat.id,
-        producto_ids: [...checkedIds],
-      })
-      await load()
-      onChanged()
+      await window.api.invoke('categorias:bulk_assign', { categoria_id: selectedCat.id, producto_ids: [...checkedIds] })
+      await load(); onChanged()
     } finally { setSaving(false) }
   }
 
   const addCat = async () => {
     if (!newName.trim()) return
     const cat = await window.api.invoke('categorias:create', { nombre: newName.trim() })
-    setNewName('')
-    await load()
-    onChanged()
+    setNewName(''); await load(); onChanged()
     selectCat({ ...cat, total_productos: 0 })
   }
 
@@ -294,9 +261,7 @@ function CategoryManagerModal({ onClose, onChanged }) {
   const saveEdit = async (id) => {
     if (!editName.trim()) return
     await window.api.invoke('categorias:update', { id, nombre: editName.trim() })
-    setEditingId(null)
-    await load()
-    onChanged()
+    setEditingId(null); await load(); onChanged()
     if (selectedCat?.id === id) setSelectedCat(c => ({ ...c, nombre: editName.trim() }))
   }
 
@@ -305,8 +270,7 @@ function CategoryManagerModal({ onClose, onChanged }) {
     await window.api.invoke('categorias:delete', confirmDel.id)
     setConfirmDel(null)
     if (selectedCat?.id === confirmDel.id) setSelectedCat(null)
-    await load()
-    onChanged()
+    await load(); onChanged()
   }
 
   const filteredProds = allProds.filter(p =>
@@ -316,7 +280,6 @@ function CategoryManagerModal({ onClose, onChanged }) {
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-lg" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
         <div className="flex justify-between items-center mb-5 shrink-0">
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2"><LuFolderOpen className="text-brand-400" /> Gestor de Categorías</h2>
@@ -326,26 +289,18 @@ function CategoryManagerModal({ onClose, onChanged }) {
         </div>
 
         <div className="flex gap-4 overflow-hidden flex-1" style={{ minHeight: 0 }}>
-
-          {/* Left column — category list + create */}
           <div className="flex flex-col gap-3 w-60 shrink-0">
-            {/* New category */}
             <div className="flex gap-2">
               <input className="input flex-1" placeholder="Nueva categoría..." value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addCat()} />
               <button className="btn-primary btn-sm" onClick={addCat}><LuPlus /></button>
             </div>
-
-            {/* Category list */}
             <div className="flex flex-col gap-1 overflow-y-auto flex-1">
               {cats.map(cat => (
                 <div key={cat.id}
-                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors group ${
-                    selectedCat?.id === cat.id ? 'bg-brand-600 text-white' : 'bg-surface-700 hover:bg-surface-600'
-                  }`}
-                  onClick={() => selectCat(cat)}
-                >
+                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors group ${selectedCat?.id === cat.id ? 'bg-brand-600 text-white' : 'bg-surface-700 hover:bg-surface-600'}`}
+                  onClick={() => selectCat(cat)}>
                   {editingId === cat.id ? (
                     <>
                       <input className="input text-sm flex-1 py-0.5 px-2 h-7"
@@ -371,7 +326,6 @@ function CategoryManagerModal({ onClose, onChanged }) {
             </div>
           </div>
 
-          {/* Right column — product assignment */}
           <div className="flex flex-col flex-1 overflow-hidden gap-3">
             {selectedCat ? (
               <>
@@ -403,23 +357,17 @@ function CategoryManagerModal({ onClose, onChanged }) {
                     <tbody>
                       {filteredProds.map(p => (
                         <tr key={p.id}
-                          className={`border-t border-white/5 cursor-pointer transition-colors ${
-                            checkedIds.has(p.id) ? 'bg-brand-600/10' : 'hover:bg-surface-700/50'
-                          }`}
-                          onClick={() => toggleCheck(p.id)}
-                        >
-                          <td className="px-3 py-2">
-                            <input type="checkbox" className="accent-brand-500" checked={checkedIds.has(p.id)} onChange={() => toggleCheck(p.id)} onClick={e => e.stopPropagation()} />
-                          </td>
+                          className={`border-t border-white/5 cursor-pointer transition-colors ${checkedIds.has(p.id) ? 'bg-brand-600/10' : 'hover:bg-surface-700/50'}`}
+                          onClick={() => toggleCheck(p.id)}>
+                          <td className="px-3 py-2"><input type="checkbox" className="accent-brand-500" checked={checkedIds.has(p.id)} onChange={() => toggleCheck(p.id)} onClick={e => e.stopPropagation()} /></td>
                           <td className="px-3 py-2">
                             <p className="font-medium text-white">{p.nombre}</p>
                             {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
                           </td>
                           <td className="px-3 py-2">
                             {p.categoria_nombre
-                              ? <span className={`badge-blue text-xs ${ p.categoria_id === selectedCat.id ? 'bg-brand-600/30 text-brand-300 border-brand-500/30' : ''}`}>{p.categoria_nombre}</span>
-                              : <span className="text-gray-500 text-xs">—</span>
-                            }
+                              ? <span className={`badge-blue text-xs ${p.categoria_id === selectedCat.id ? 'bg-brand-600/30 text-brand-300 border-brand-500/30' : ''}`}>{p.categoria_nombre}</span>
+                              : <span className="text-gray-500 text-xs">—</span>}
                           </td>
                           <td className="px-3 py-2 text-gray-400">{p.stock_actual}</td>
                         </tr>
@@ -436,32 +384,32 @@ function CategoryManagerModal({ onClose, onChanged }) {
             )}
           </div>
         </div>
-      </div>
 
-      {confirmDel && (
-        <ConfirmationModal
-          title={`¿Eliminar «the ${confirmDel.nombre}»?`}
-          message={`Los productos de esta categoría quedarán sin categoria asignada. Esta acción no se puede deshacer.`}
-          onConfirm={deleteCat}
-          onCancel={() => setConfirmDel(null)}
-        />
-      )}
+        {confirmDel && (
+          <ConfirmationModal
+            title={`¿Eliminar «${confirmDel.nombre}»?`}
+            message={`Los productos de esta categoría quedarán sin categoría asignada. Esta acción no se puede deshacer.`}
+            onConfirm={deleteCat}
+            onCancel={() => setConfirmDel(null)}
+          />
+        )}
+      </div>
     </div>
   )
 }
 
 // ── Main Inventario page ─────────────────────────────────────────────────────
 export default function Inventario() {
-  const { fmt, toVes, tasa } = useApp()
+  const { fmt } = useApp()
   const [productos, setProductos] = useState([])
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [filterBajoStock, setFilterBajoStock] = useState(false)
-  const [modal, setModal] = useState(null) // null | 'crear' | 'editar' | 'merma' | 'categorias'
+  const [modal, setModal] = useState(null)
   const [selected, setSelected] = useState(null)
-  const [confirmDelete, setConfirmDelete] = useState(null) // null | producto
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -480,10 +428,7 @@ export default function Inventario() {
 
   useEffect(() => { load() }, [load])
 
-  const deleteProd = async (p) => {
-    setConfirmDelete(p)
-  }
-
+  const deleteProd = async (p) => { setConfirmDelete(p) }
   const handleConfirmDelete = async () => {
     const p = confirmDelete
     if (!p) return
@@ -496,7 +441,6 @@ export default function Inventario() {
 
   return (
     <div className="page">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">📦 Inventario</h1>
@@ -518,7 +462,6 @@ export default function Inventario() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
         <div className="relative flex-1 min-w-[160px] max-w-sm">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><LuSearch /></span>
@@ -535,7 +478,6 @@ export default function Inventario() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card table-wrapper flex-1">
         <table>
           <thead>
@@ -543,18 +485,17 @@ export default function Inventario() {
               <th>Código</th>
               <th>Producto</th>
               <th>Categoría</th>
-              <th className="text-right">Compra</th>
-              <th className="text-right">Venta USD</th>
-              <th className="text-right">Venta Bs.</th>
+              <th className="text-right">Compra (Bs.)</th>
+              <th className="text-right">Venta (Bs.)</th>
               <th className="text-center">Stock</th>
               <th className="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-500">Cargando...</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-gray-500">Cargando...</td></tr>
             ) : productos.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-12 text-gray-500">Sin productos. Crea el primero ↑</td></tr>
+              <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sin productos. Crea el primero ↑</td></tr>
             ) : productos.map(p => {
               const bajo = p.stock_actual <= p.stock_minimo
               return (
@@ -565,17 +506,11 @@ export default function Inventario() {
                     {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
                   </td>
                   <td><span className="badge-blue">{p.categoria_nombre || '—'}</span></td>
-                  <td className="text-right text-gray-400">
-                    {p.moneda_precio === 'ves' ? `Bs. ${Number(p.precio_compra_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}` : fmt(p.precio_compra_usd)}
-                  </td>
-                  <td className="text-right font-semibold text-white">
-                    {fmt(p.precio_venta_usd)}
-                  </td>
-                  <td className="text-right text-sm">
-                    {p.moneda_precio === 'ves' 
-                      ? <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">Fijo: Bs. {Number(p.precio_venta_ves).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                      : <span className="text-gray-400">≈ Bs. {toVes(p.precio_venta_usd).toLocaleString('es-VE', { maximumFractionDigits: 2 })}</span>
-                    }
+                  <td className="text-right text-gray-400">{fmt(p.precio_compra)}</td>
+                  <td className="text-right">
+                    <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">
+                      {fmt(p.precio_venta)}
+                    </span>
                   </td>
                   <td className="text-center">
                     <div className="flex flex-col items-center gap-1">
@@ -597,7 +532,6 @@ export default function Inventario() {
         </table>
       </div>
 
-      {/* Modals */}
       {(modal === 'crear' || modal === 'editar') && (
         <ProductoModal producto={modal === 'editar' ? selected : null} categorias={categorias}
           onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
@@ -608,7 +542,6 @@ export default function Inventario() {
       {modal === 'categorias' && (
         <CategoryManagerModal onClose={() => setModal(null)} onChanged={load} />
       )}
-
       {confirmDelete && (
         <ConfirmationModal
           title="¿Eliminar Producto?"
