@@ -1,6 +1,6 @@
 {
   "name": "jauv-studio-pos",
-  "version": "1.0.0",
+  "version": "2.5.0",
   "description": "Sistema POS para JAUV Studio - Papelería Venezuela",
   "main": "electron/main.js",
   "author": "JAUV Studio",
@@ -46,7 +46,7 @@
       "output": "dist-electron"
     },
     "win": {
-      "icon": "public/img/icono.png"
+      "icon": "img/icono.png"
     },
     "files": [
       "dist/**/*",

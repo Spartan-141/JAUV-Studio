@@ -61,13 +61,6 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
   const [clienteNombre, setClienteNombre] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const totalPagadoUsd = Object.entries(pagos).reduce((acc, [key, val]) => {
-    if (!val || val === '') return acc
-    const num = parseFloat(val) || 0
-    if (key === 'efectivo_usd') return acc + num
-    return acc + (num / tasa)
-  }, 0)
-  
   const totalPagadoVes = Object.entries(pagos).reduce((acc, [key, val]) => {
     if (!val || val === '') return acc
     const num = parseFloat(val) || 0
@@ -75,17 +68,16 @@ function PagoModal({ cart, totalFinal, exactTotalVes, tasa, config, onClose, onC
     return acc + num
   }, 0)
 
-  const faltaUsd = Math.max(0, totalFinal - totalPagadoUsd)
-  const faltaVes = Math.max(0, exactTotalVes - totalPagadoVes)
-  
-  const vueltoUsd = totalPagadoUsd > totalFinal ? totalPagadoUsd - totalFinal : 0
-  const vueltoVes = totalPagadoVes > exactTotalVes ? totalPagadoVes - exactTotalVes : 0
+  const totalPagadoUsd = totalPagadoVes / tasa
 
-  // Consider fully paid if USD is covered OR VES is fully covered (within 0.5 Bs tolerance)
-  // This avoids false "credit" status when VES amounts cause rounding cents in USD
-  const vesCubierto = faltaVes <= 0.5
-  const usdCubierto = faltaUsd <= 0.005
-  const esCredito = !vesCubierto && !usdCubierto
+  const faltaVes = Math.max(0, exactTotalVes - totalPagadoVes)
+  const faltaUsd = faltaVes / tasa
+  
+  const vueltoVes = totalPagadoVes > exactTotalVes ? totalPagadoVes - exactTotalVes : 0
+  const vueltoUsd = vueltoVes / tasa
+
+  // Credit evaluation relies strictly on VES difference with slight tolerance for float issues
+  const esCredito = faltaVes > 0.05
 
 
   const confirm = async () => {
@@ -169,16 +161,17 @@ function ServicioCopioModal({ servicio, onClose, onAdd }) {
   const [hojas, setHojas] = useState(1)
   
   const isVes = servicio.moneda_precio === 'ves'
-  const subtotal_usd = isVes ? (servicio.precio_ves / tasa) * cant : servicio.precio_usd * cant
-  const subtotal_ves = isVes ? servicio.precio_ves * cant : subtotal_usd * tasa
+  const base_ves = isVes ? servicio.precio_ves : servicio.precio_usd * tasa
+  const subtotal_ves = base_ves * cant
+  const subtotal_usd = subtotal_ves / tasa
 
   const add = () => onAdd({
     tipo: 'servicio', ref_id: servicio.id,
     nombre: servicio.nombre, cantidad: parseInt(cant),
     cantidad_hojas_gastadas: parseInt(hojas),
-    precio_unitario_usd: isVes ? (servicio.precio_ves / tasa) : servicio.precio_usd,
+    precio_unitario_usd: base_ves / tasa,
     subtotal_usd: subtotal_usd,
-    precio_unitario_ves: servicio.precio_ves || 0,
+    precio_unitario_ves: base_ves,
     subtotal_ves: subtotal_ves,
     moneda_precio: servicio.moneda_precio || 'usd',
     insumo_id: servicio.insumo_id,
@@ -257,22 +250,24 @@ export default function POS() {
           return prev
         }
         return prev.map(c => c.ref_id === item.id && c.tipo === 'producto'
-          ? { ...c, cantidad: c.cantidad + 1, subtotal_usd: (c.cantidad + 1) * c.precio_unitario_usd }
+          ? { ...c, cantidad: c.cantidad + 1, subtotal_ves: (c.cantidad + 1) * c.precio_unitario_ves, subtotal_usd: ((c.cantidad + 1) * c.precio_unitario_ves) / tasa }
           : c)
       }
       if (item.stock_actual < 1) {
         setAlertMsg(`No hay stock disponible de ${item.nombre}`)
         return prev
       }
+      const p_ves = item.moneda_precio === 'ves' ? item.precio_venta_ves : item.precio_venta_usd * tasa;
+      const p_usd = p_ves / tasa;
       return [...prev, { 
         tipo: 'producto', 
         ref_id: item.id, 
         nombre: item.nombre, 
         cantidad: 1, 
-        precio_unitario_usd: item.precio_venta_usd,
-        subtotal_usd: item.precio_venta_usd, 
-        precio_unitario_ves: item.precio_venta_ves,
-        subtotal_ves: item.precio_venta_ves,
+        precio_unitario_usd: p_usd,
+        subtotal_usd: p_usd, 
+        precio_unitario_ves: p_ves,
+        subtotal_ves: p_ves,
         moneda_precio: item.moneda_precio,
         stock_actual: item.stock_actual 
       }]
@@ -297,36 +292,35 @@ export default function POS() {
       const item = prev[idx]
       if (item.tipo === 'producto' && qty > item.stock_actual) {
         setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
-        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_usd: item.stock_actual * c.precio_unitario_usd, subtotal_ves: item.stock_actual * (c.precio_unitario_ves || 0) } : c)
+        return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal_ves: item.stock_actual * c.precio_unitario_ves, subtotal_usd: (item.stock_actual * c.precio_unitario_ves) / tasa } : c)
       }
-      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_usd: qty * c.precio_unitario_usd, subtotal_ves: qty * (c.precio_unitario_ves || 0) } : c)
+      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal_ves: qty * c.precio_unitario_ves, subtotal_usd: (qty * c.precio_unitario_ves) / tasa } : c)
     })
   }
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))
-  const clearCart = () => { setCart([]); setDescuento(''); setLastVenta(null) }
+  const clearCart = (keepVenta = false) => { setCart([]); setDescuento(''); if (!keepVenta) setLastVenta(null) }
 
-  const subtotal_usd = cart.reduce((s, c) => s + c.subtotal_usd, 0)
-  const subtotal_ves = cart.reduce((s, c) => s + (c.moneda_precio === 'ves' ? c.subtotal_ves : c.subtotal_usd * tasa), 0)
+  const subtotal_ves = cart.reduce((s, c) => s + c.subtotal_ves, 0)
+  const subtotal_usd = subtotal_ves / tasa
 
   const valorInput = parseFloat(descuento) || 0
-  let descValUsd = 0
-  if (tipoDescuento === 'usd') {
-    descValUsd = valorInput
-  } else if (tipoDescuento === 'ves') {
-    descValUsd = tasa > 0 ? valorInput / tasa : 0
+  let descValVes = 0
+  if (tipoDescuento === 'ves') {
+    descValVes = valorInput
+  } else if (tipoDescuento === 'usd') {
+    descValVes = valorInput * tasa
   } else if (tipoDescuento === 'perc') {
-    descValUsd = (subtotal_usd * valorInput) / 100
+    descValVes = (subtotal_ves * valorInput) / 100
   }
 
   // Safety bounds
-  if (isNaN(descValUsd) || descValUsd < 0) descValUsd = 0
-  if (descValUsd > subtotal_usd) descValUsd = subtotal_usd
+  if (isNaN(descValVes) || descValVes < 0) descValVes = 0
+  if (descValVes > subtotal_ves) descValVes = subtotal_ves
 
-  const ratioDescuento = subtotal_usd > 0 ? descValUsd / subtotal_usd : 0
-  const descValVes = subtotal_ves * ratioDescuento
+  const descValUsd = descValVes / tasa
   
-  const totalFinalUsd = Math.max(0, subtotal_usd - descValUsd)
   const totalFinalVes = Math.max(0, subtotal_ves - descValVes)
+  const totalFinalUsd = totalFinalVes / tasa
 
   const confirmarVenta = async ({ pagosArr, clienteNombre, esCredito, falta }) => {
     const cabecera = {
@@ -342,8 +336,7 @@ export default function POS() {
     const result = await window.api.invoke('ventas:create', { cabecera, detalles: cart, pagos: pagosArr })
     const ventaConId = { ...cabecera, id: result.id }
     setLastVenta({ venta: ventaConId, detalles: cart, pagos: pagosArr })
-    setModal(null)
-    clearCart()
+    clearCart(true)
     setModal('ticket')
   }
 
@@ -427,11 +420,11 @@ export default function POS() {
                       </div>
                     </td>
                     <td className="text-right hidden sm:table-cell">
-                      <p className="font-semibold text-white">Bs. {(item.moneda_precio === 'ves' ? item.precio_unitario_ves : item.precio_unitario_usd * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="font-semibold text-white">Bs. {item.precio_unitario_ves.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       <p className="text-[10px] text-gray-500">{fmt(item.precio_unitario_usd)} USD</p>
                     </td>
                     <td className="text-right">
-                      <p className="font-bold text-brand-400 text-xs sm:text-sm">Bs. {(item.moneda_precio === 'ves' ? item.subtotal_ves : item.subtotal_usd * tasa).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="font-bold text-brand-400 text-xs sm:text-sm">Bs. {item.subtotal_ves.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       <p className="text-[10px] text-gray-400">{fmt(item.subtotal_usd)} USD</p>
                     </td>
                     <td><button onClick={()=>removeItem(i)} className="btn-ghost btn-sm text-red-400">✕</button></td>

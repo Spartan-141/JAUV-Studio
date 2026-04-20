@@ -42,3 +42,19 @@ ipcMain.handle('cuentas:abonar', async (_e, { venta_id, metodo, monto_usd, monto
     throw err;
   }
 });
+
+// Manually adjust the debt of a sale
+ipcMain.handle('cuentas:ajustar_deuda', async (_e, { venta_id, nuevo_saldo_ves, nueva_tasa_cambio }) => {
+  const db = getDb();
+  // We compute the new underlying USD based on the newly submitted anchored VES amount and the new rate
+  const nuevo_saldo_usd = nuevo_saldo_ves / nueva_tasa_cambio;
+  
+  let nuevoEstado = nuevo_saldo_usd <= 0.001 ? 'pagada' : 'credito';
+  
+  await db.run(
+    'UPDATE ventas SET saldo_pendiente_usd = ?, tasa_cambio = ?, estado = ? WHERE id = ?',
+    [nuevo_saldo_usd, nueva_tasa_cambio, nuevoEstado, venta_id]
+  );
+  return { saldo_pendiente_usd: nuevo_saldo_usd, tasa_cambio: nueva_tasa_cambio, estado: nuevoEstado };
+});
+
