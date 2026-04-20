@@ -14,6 +14,12 @@ export const AjustarDeudaSchema = z.object({
   nuevo_saldo: z.number().min(0),
 });
 
+export const SincronizarPrecioSchema = z.object({
+  venta_id: z.number().int().positive(),
+  detalle_id: z.number().int().positive(),
+  nuevo_precio: z.number().min(0),
+});
+
 export class CuentasUseCases {
   constructor(private repo: ICuentasRepository) {}
 
@@ -36,5 +42,11 @@ export class CuentasUseCases {
     const valid = AjustarDeudaSchema.safeParse(data);
     if (!valid.success) return ResultFactory.fail(new Error(valid.error.message));
     return this.repo.ajustarDeuda(valid.data.venta_id, valid.data.nuevo_saldo);
+  }
+
+  async sincronizarPrecioArticulo(data: unknown): Promise<Result<{ saldo_pendiente: number; total: number; estado: string }>> {
+    const valid = SincronizarPrecioSchema.safeParse(data);
+    if (!valid.success) return ResultFactory.fail(new Error(valid.error.message));
+    return this.repo.sincronizarPrecioArticulo(valid.data.venta_id, valid.data.detalle_id, valid.data.nuevo_precio);
   }
 }

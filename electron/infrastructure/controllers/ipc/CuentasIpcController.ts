@@ -28,5 +28,11 @@ export class CuentasIpcController {
       if (!result.isSuccess) throw result.getError();
       return result.getValue();
     });
+
+    ipcMain.handle('cuentas:sincronizar_precio', async (_e, data) => {
+      const result = await this.useCases.sincronizarPrecioArticulo(data);
+      if (!result.isSuccess) throw result.getError();
+      return result.getValue();
+    });
   }
 }

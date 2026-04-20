@@ -100,24 +100,41 @@ function AbonoModal({ venta, onClose, onSave }) {
   )
 }
 
-function DetalleModal({ ventaId, onClose, openModificar }) {
+function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
   const { fmt } = useApp()
   const [data, setData] = useState(null)
   const [inventoryPrices, setInventoryPrices] = useState({})
+  const [syncingId, setSyncingId] = useState(null)
 
-  useEffect(() => {
-    window.api.invoke('cuentas:get', ventaId).then(async (res) => {
-      setData(res)
-      const prices = {}
-      for (const d of res.detalles) {
-        if (d.tipo === 'producto') {
-          const p = await window.api.invoke('productos:get', d.ref_id)
-          if (p) prices[d.id] = { currentVes: p.precio_venta || 0 }
-        }
+  const loadDetalle = useCallback(async () => {
+    const res = await window.api.invoke('cuentas:get', ventaId)
+    setData(res)
+    const prices = {}
+    for (const d of res.detalles) {
+      if (d.tipo === 'producto') {
+        const p = await window.api.invoke('productos:get', d.ref_id).catch(() => null)
+        if (p) prices[d.id] = { currentVes: p.precio_venta || 0 }
       }
-      setInventoryPrices(prices)
-    })
+    }
+    setInventoryPrices(prices)
   }, [ventaId])
+
+  useEffect(() => { loadDetalle() }, [loadDetalle])
+
+  const handleSyncPrice = async (detalle, nuevoPrecio) => {
+    setSyncingId(detalle.id)
+    try {
+      await window.api.invoke('cuentas:sincronizar_precio', {
+        venta_id: data.id,
+        detalle_id: detalle.id,
+        nuevo_precio: nuevoPrecio
+      })
+      await loadDetalle()
+      if (onUpdated) onUpdated()
+    } finally {
+      setSyncingId(null)
+    }
+  }
 
   if (!data) return <div className="modal-backdrop"><div className="modal text-center py-10 text-gray-400">Cargando...</div></div>
 
@@ -161,7 +178,20 @@ function DetalleModal({ ventaId, onClose, openModificar }) {
                 <tr key={i}>
                   <td>
                     <p>{d.nombre}</p>
-                    {priceIncreased && <span className="text-[10px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded inline-flex items-center gap-1 w-max mt-1">⚠️ Precio en inventario subió a {fmt(actual.currentVes)}</span>}
+                    {priceIncreased && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded inline-flex items-center gap-1 w-max">
+                          ⚠️ Subió a {fmt(actual.currentVes)}
+                        </span>
+                        <button
+                          onClick={() => handleSyncPrice(d, actual.currentVes)}
+                          disabled={syncingId === d.id}
+                          className="text-[10px] bg-brand-600 hover:bg-brand-500 text-white px-2 py-0.5 rounded transition-colors"
+                        >
+                          {syncingId === d.id ? '⏳...' : '🔄 Actualizar Precio'}
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="text-center">{d.cantidad}</td>
                   <td className="text-right">{fmt(d.precio_unitario)}</td>
@@ -281,7 +311,7 @@ export default function CuentasPorCobrar() {
       </div>
 
       {modal === 'abono' && selected && <AbonoModal venta={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
-      {modal === 'detalle' && selected && <DetalleModal ventaId={selected.id} onClose={() => setModal(null)} openModificar={(v) => { setSelected(v); setModal('modificar') }} />}
+      {modal === 'detalle' && selected && <DetalleModal ventaId={selected.id} onClose={() => setModal(null)} openModificar={(v) => { setSelected(v); setModal('modificar') }} onUpdated={load} />}
       {modal === 'modificar' && selected && <ModificarDeudaModal venta={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />}
     </div>
   )

@@ -106,16 +106,64 @@ export class SqliteCuentasRepository implements ICuentasRepository {
   async ajustarDeuda(ventaId: number, nuevoSaldo: number): Promise<Result<{ saldo_pendiente: number; estado: string }>> {
     try {
       const dbConn = this.db.getConnection();
+      await dbConn.exec('BEGIN TRANSACTION;');
+
+      const venta = await dbConn.get('SELECT saldo_pendiente_usd, total_usd FROM ventas WHERE id = ?', [ventaId]);
+      if (!venta) throw new Error('Venta no encontrada');
+
+      const delta = nuevoSaldo - venta.saldo_pendiente_usd;
+      const nuevoTotal = Math.max(0, parseFloat((venta.total_usd + delta).toFixed(2)));
       const nuevoEstado = nuevoSaldo <= 0.05 ? 'pagada' : 'credito';
       
       await dbConn.run(
-        'UPDATE ventas SET saldo_pendiente_usd = ?, estado = ? WHERE id = ?',
-        [nuevoSaldo, nuevoEstado, ventaId]
+        'UPDATE ventas SET saldo_pendiente_usd = ?, total_usd = ?, estado = ? WHERE id = ?',
+        [nuevoSaldo, nuevoTotal, nuevoEstado, ventaId]
       );
       
+      await dbConn.exec('COMMIT;');
       return ResultFactory.ok({ saldo_pendiente: nuevoSaldo, estado: nuevoEstado });
-    } catch (e) {
-      return ResultFactory.fail(e instanceof Error ? e : String(e));
+    } catch (err) {
+      try { const dbConn = this.db.getConnection(); await dbConn.exec('ROLLBACK;'); } catch (_) {}
+      return ResultFactory.fail(err instanceof Error ? err : String(err));
+    }
+  }
+
+  async sincronizarPrecioArticulo(ventaId: number, detalleId: number, nuevoPrecio: number): Promise<Result<{ saldo_pendiente: number; total: number; estado: string }>> {
+    try {
+      const dbConn = this.db.getConnection();
+      await dbConn.exec('BEGIN TRANSACTION;');
+
+      const detalle = await dbConn.get('SELECT cantidad, precio_unitario_usd, subtotal_usd FROM detalle_venta WHERE id = ? AND venta_id = ?', [detalleId, ventaId]);
+      if (!detalle) throw new Error('Detalle de venta no encontrado');
+
+      const nuevoSubtotal = parseFloat((detalle.cantidad * nuevoPrecio).toFixed(2));
+      const deltaSubtotal = nuevoSubtotal - detalle.subtotal_usd;
+
+      if (deltaSubtotal <= 0) throw new Error('El nuevo precio no representa un aumento sobre el registrado');
+
+      await dbConn.run(
+        'UPDATE detalle_venta SET precio_unitario_usd = ?, subtotal_usd = ? WHERE id = ?',
+        [nuevoPrecio, nuevoSubtotal, detalleId]
+      );
+
+      const venta = await dbConn.get('SELECT subtotal_usd, total_usd, saldo_pendiente_usd FROM ventas WHERE id = ?', [ventaId]);
+      if (!venta) throw new Error('Venta no encontrada');
+
+      const nuevoVentaSubtotal = parseFloat((venta.subtotal_usd + deltaSubtotal).toFixed(2));
+      const nuevoVentaTotal = parseFloat((venta.total_usd + deltaSubtotal).toFixed(2));
+      const nuevoSaldoPendiente = parseFloat((venta.saldo_pendiente_usd + deltaSubtotal).toFixed(2));
+      const nuevoEstado = nuevoSaldoPendiente <= 0.05 ? 'pagada' : 'credito';
+
+      await dbConn.run(
+        'UPDATE ventas SET subtotal_usd = ?, total_usd = ?, saldo_pendiente_usd = ?, estado = ? WHERE id = ?',
+        [nuevoVentaSubtotal, nuevoVentaTotal, nuevoSaldoPendiente, nuevoEstado, ventaId]
+      );
+
+      await dbConn.exec('COMMIT;');
+      return ResultFactory.ok({ saldo_pendiente: nuevoSaldoPendiente, total: nuevoVentaTotal, estado: nuevoEstado });
+    } catch (err) {
+      try { const dbConn = this.db.getConnection(); await dbConn.exec('ROLLBACK;'); } catch (_) {}
+      return ResultFactory.fail(err instanceof Error ? err : String(err));
     }
   }
 }

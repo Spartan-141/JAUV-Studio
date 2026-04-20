@@ -11,4 +11,5 @@ export interface ICuentasRepository {
   getCredito(ventaId: number): Promise<Result<Venta | null>>;
   abonar(ventaId: number, abono: any): Promise<Result<{ saldo_pendiente: number; estado: string }>>;
   ajustarDeuda(ventaId: number, nuevoSaldo: number): Promise<Result<{ saldo_pendiente: number; estado: string }>>;
+  sincronizarPrecioArticulo(ventaId: number, detalleId: number, nuevoPrecio: number): Promise<Result<{ saldo_pendiente: number; total: number; estado: string }>>;
 }
