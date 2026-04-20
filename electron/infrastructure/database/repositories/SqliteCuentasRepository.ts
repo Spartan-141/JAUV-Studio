@@ -139,7 +139,7 @@ export class SqliteCuentasRepository implements ICuentasRepository {
       const nuevoSubtotal = parseFloat((detalle.cantidad * nuevoPrecio).toFixed(2));
       const deltaSubtotal = nuevoSubtotal - detalle.subtotal_usd;
 
-      if (deltaSubtotal <= 0) throw new Error('El nuevo precio no representa un aumento sobre el registrado');
+      if (deltaSubtotal === 0) throw new Error('El precio actual es idéntico al registrado');
 
       await dbConn.run(
         'UPDATE detalle_venta SET precio_unitario_usd = ?, subtotal_usd = ? WHERE id = ?',
@@ -149,9 +149,9 @@ export class SqliteCuentasRepository implements ICuentasRepository {
       const venta = await dbConn.get('SELECT subtotal_usd, total_usd, saldo_pendiente_usd FROM ventas WHERE id = ?', [ventaId]);
       if (!venta) throw new Error('Venta no encontrada');
 
-      const nuevoVentaSubtotal = parseFloat((venta.subtotal_usd + deltaSubtotal).toFixed(2));
-      const nuevoVentaTotal = parseFloat((venta.total_usd + deltaSubtotal).toFixed(2));
-      const nuevoSaldoPendiente = parseFloat((venta.saldo_pendiente_usd + deltaSubtotal).toFixed(2));
+      const nuevoVentaSubtotal = Math.max(0, parseFloat((venta.subtotal_usd + deltaSubtotal).toFixed(2)));
+      const nuevoVentaTotal = Math.max(0, parseFloat((venta.total_usd + deltaSubtotal).toFixed(2)));
+      const nuevoSaldoPendiente = Math.max(0, parseFloat((venta.saldo_pendiente_usd + deltaSubtotal).toFixed(2)));
       const nuevoEstado = nuevoSaldoPendiente <= 0.05 ? 'pagada' : 'credito';
 
       await dbConn.run(

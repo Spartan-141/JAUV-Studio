@@ -179,15 +179,18 @@ function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
           <table><thead><tr><th>Descripción</th><th className="text-center">Cant</th><th className="text-right">P.Unit</th><th className="text-right">Subtotal</th></tr></thead>
             <tbody>{data.detalles?.map((d, i) => {
               const actual = inventoryPrices[d.id]
-              const priceIncreased = actual && actual.currentVes > (d.precio_unitario || 0) + 0.5
+              const subtotalDiff = actual ? actual.currentVes - (d.precio_unitario || 0) : 0
+              const priceChanged = Math.abs(subtotalDiff) > 0.05
+              const wentUp = subtotalDiff > 0
+
               return (
                 <tr key={i}>
                   <td>
                     <p>{d.nombre}</p>
-                    {priceIncreased && (
+                    {priceChanged && (
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-accent-yellow bg-accent-yellow/10 px-1.5 py-0.5 rounded inline-flex items-center gap-1 w-max">
-                          ⚠️ Subió a {fmt(actual.currentVes)}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 w-max ${wentUp ? 'text-accent-yellow bg-accent-yellow/10' : 'text-brand-300 bg-brand-900/40'}`}>
+                          {wentUp ? '⚠️ Subió a' : '📉 Bajó a'} {fmt(actual.currentVes)}
                         </span>
                         <button
                           onClick={() => handleSyncPrice(d, actual.currentVes)}
