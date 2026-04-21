@@ -177,6 +177,13 @@ interface PaginatedVentas {
   resumen: ReporteResumen      // Métricas calculadas para este filtro
 }
 
+export interface CalendarioDia {
+  fecha: string;         // 'YYYY-MM-DD'
+  total_ventas: number;  // número de ventas en el día
+  ingresos: number;      // sumatoria de total_usd
+  creditos: number;      // número de ventas a crédito
+}
+
 > [!IMPORTANT]
 > **Cálculo de "Cobrado"**: A partir de la v2.7.0, el monto cobrado visualizado en la interfaz no es una resta matemática (`total - saldo`), sino la suma real de la tabla `pagos` y `abonos`. Esto asegura que si el precio de un ítem baja, los pagos previos se mantengan íntegros en el reporte.
 ```

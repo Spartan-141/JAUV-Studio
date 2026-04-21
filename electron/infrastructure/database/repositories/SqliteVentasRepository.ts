@@ -1,4 +1,4 @@
-import { IVentasRepository, Venta, DetalleVenta, Pago, VentasFilters, VentasPaginationParams, PaginatedVentas } from '../../../domain/repositories/interfaces/IVentasRepository';
+import { IVentasRepository, Venta, DetalleVenta, Pago, VentasFilters, VentasPaginationParams, PaginatedVentas, CalendarioDia } from '../../../domain/repositories/interfaces/IVentasRepository';
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
@@ -238,6 +238,34 @@ export class SqliteVentasRepository implements IVentasRepository {
           pagos: pagosAgrupados
         }
       });
+    } catch (e) {
+      return ResultFactory.fail(e instanceof Error ? e : String(e));
+    }
+  }
+
+  async calendario(year: number, month: number): Promise<Result<CalendarioDia[]>> {
+    try {
+      const dbConn = this.db.getConnection();
+      const fechaDesde = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const fechaHasta = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      const rows = await dbConn.all(`
+        SELECT 
+          date(fecha) AS fecha,
+          COUNT(*) AS total_ventas,
+          SUM(total_usd) AS ingresos,
+          SUM(CASE WHEN estado = 'credito' THEN 1 ELSE 0 END) AS creditos
+        FROM ventas
+        WHERE date(fecha) >= ? AND date(fecha) <= ?
+        GROUP BY date(fecha)
+        ORDER BY fecha ASC
+      `, [fechaDesde, fechaHasta]);
+      return ResultFactory.ok(rows.map((r: any) => ({
+        fecha: r.fecha,
+        total_ventas: r.total_ventas || 0,
+        ingresos: r.ingresos || 0,
+        creditos: r.creditos || 0,
+      })));
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }

@@ -54,5 +54,12 @@ export class VentasIpcController {
       if (!result.isSuccess) throw result.getError();
       return result.getValue();
     });
+
+    ipcMain.handle('ventas:calendario', async (_e, params = {}) => {
+      const { year, month } = params;
+      const result = await this.useCases.getCalendarioMes(year, month);
+      if (!result.isSuccess) throw result.getError();
+      return result.getValue();
+    });
   }
 }

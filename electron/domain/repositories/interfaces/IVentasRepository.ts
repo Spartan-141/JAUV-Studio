@@ -76,6 +76,13 @@ export interface PaginatedVentas {
   };
 }
 
+export interface CalendarioDia {
+  fecha: string;         // 'YYYY-MM-DD'
+  total_ventas: number;  // count of ventas
+  ingresos: number;      // sum(total_usd)
+  creditos: number;      // count of credito ventas
+}
+
 export interface IVentasRepository {
   create(venta: Omit<Venta, 'id' | 'fecha' | 'detalles' | 'pagos' | 'abonos'>): Promise<Result<number>>;
   addDetalle(ventaId: number, detalle: DetalleVenta): Promise<Result<void>>;
@@ -85,4 +92,5 @@ export interface IVentasRepository {
   getById(id: number): Promise<Result<Venta | null>>;
   ultimas(limit: number): Promise<Result<Venta[]>>;
   paginate(params: VentasPaginationParams): Promise<Result<PaginatedVentas>>;
+  calendario(year: number, month: number): Promise<Result<CalendarioDia[]>>;
 }

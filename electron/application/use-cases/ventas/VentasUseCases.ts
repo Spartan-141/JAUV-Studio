@@ -129,4 +129,9 @@ export class VentasUseCases {
   async getVentasPaginated(params: VentasPaginationParams): Promise<Result<PaginatedVentas>> {
     return this.repo.paginate(params);
   }
+
+  async getCalendarioMes(year: number, month: number): Promise<Result<any[]>> {
+    if (!year || !month) return ResultFactory.fail(new Error('Año y mes son requeridos'));
+    return this.repo.calendario(year, month);
+  }
 }
