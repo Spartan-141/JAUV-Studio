@@ -11,6 +11,12 @@ export class ProductosIpcController {
       return result.getValue();
     });
 
+    ipcMain.handle('productos:paginated', async (_e, params) => {
+      const result = await this.useCases.getPaginatedProductos(params);
+      if (!result.isSuccess) throw result.getError();
+      return result.getValue();
+    });
+
     ipcMain.handle('productos:get', async (_e, id: number) => {
       const result = await this.useCases.getProductoById(id);
       if (!result.isSuccess) throw result.getError();

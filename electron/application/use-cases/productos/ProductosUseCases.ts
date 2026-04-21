@@ -1,7 +1,15 @@
-import { IProductosRepository, Producto, ProductoFilters } from '../../../domain/repositories/interfaces/IProductosRepository';
+import { IProductosRepository, Producto, ProductoFilters, ProductoPaginationParams, PaginatedProductos } from '../../../domain/repositories/interfaces/IProductosRepository';
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { GeneradorCodigoBarras } from '../../../domain/services/GeneradorCodigoBarras';
 import { z } from 'zod';
+
+export const PaginateProductosSchema = z.object({
+  page: z.number().int().positive().default(1),
+  perPage: z.number().int().positive().default(25),
+  search: z.string().optional(),
+  categoria_id: z.union([z.string(), z.number()]).optional(),
+  bajo_stock: z.union([z.string(), z.boolean()]).optional(),
+});
 
 export const ProductoBaseSchema = z.object({
   codigo: z.string().optional(),
@@ -29,6 +37,12 @@ export class ProductosUseCases {
 
   async listProductos(filters: ProductoFilters): Promise<Result<Producto[]>> {
     return this.repo.list(filters);
+  }
+
+  async getPaginatedProductos(data: unknown): Promise<Result<PaginatedProductos>> {
+    const valid = PaginateProductosSchema.safeParse(data);
+    if (!valid.success) return ResultFactory.fail(new Error(valid.error.message));
+    return this.repo.paginate(valid.data);
   }
 
   async getProductoById(id: number): Promise<Result<Producto>> {

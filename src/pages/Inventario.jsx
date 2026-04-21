@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { LuPlus, LuPencil, LuTrash2, LuSearch, LuTrendingDown, LuTriangleAlert, LuFolderOpen, LuCheck, LuX } from 'react-icons/lu'
+import { LuPlus, LuPencil, LuTrash2, LuSearch, LuTrendingDown, LuTriangleAlert, LuFolderOpen, LuCheck, LuX, LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 import { useApp } from '../context/AppContext.jsx'
 import JsBarcode from 'jsbarcode'
 import ConfirmationModal from '../components/ConfirmationModal.jsx'
@@ -401,7 +401,9 @@ function CategoryManagerModal({ onClose, onChanged }) {
 // ── Main Inventario page ─────────────────────────────────────────────────────
 export default function Inventario() {
   const { fmt } = useApp()
-  const [productos, setProductos] = useState([])
+  const [data, setData] = useState({ productos: [], total: 0, pages: 0 })
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 25
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -411,22 +413,25 @@ export default function Inventario() {
   const [selected, setSelected] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (p = 1) => {
     setLoading(true)
-    const [prods, cats] = await Promise.all([
-      window.api.invoke('productos:list', {
+    const [paginatedData, cats] = await Promise.all([
+      window.api.invoke('productos:paginated', {
+        page: p,
+        perPage: PER_PAGE,
         search: search || undefined,
         categoria_id: filterCat || undefined,
         bajo_stock: filterBajoStock || undefined,
       }),
       window.api.invoke('categorias:list'),
     ])
-    setProductos(prods)
+    setData(paginatedData)
     setCategorias(cats)
+    setPage(p)
     setLoading(false)
   }, [search, filterCat, filterBajoStock])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(1) }, [search, filterCat, filterBajoStock]) // Removed load from deps and manually control search trigger
 
   const deleteProd = async (p) => { setConfirmDelete(p) }
   const handleConfirmDelete = async () => {
@@ -434,25 +439,20 @@ export default function Inventario() {
     if (!p) return
     await window.api.invoke('productos:delete', p.id)
     setConfirmDelete(null)
-    load()
+    load(page)
   }
 
-  const bajoStockCount = productos.filter(p => p.stock_actual <= p.stock_minimo).length
+  // The true count of total low stock isn't known without querying specifically, but we can 
+  // assume if they check "Solo bajo stock" the total goes to `data.total`.
 
   return (
-    <div className="page">
+    <div className="page pb-8">
       <div className="page-header">
         <div>
           <h1 className="page-title">📦 Inventario</h1>
-          <p className="text-sm text-gray-500">{productos.length} productos · {categorias.length} categorías</p>
+          <p className="text-sm text-gray-500">{data.total} productos · {categorias.length} categorías</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3">
-          {bajoStockCount > 0 && (
-            <button onClick={() => setFilterBajoStock(v => !v)}
-              className={`badge-red text-sm px-3 py-2 rounded-lg cursor-pointer ${filterBajoStock ? 'ring-2 ring-red-400' : ''}`}>
-              <LuTriangleAlert className="text-sm" /> {bajoStockCount} bajo stock
-            </button>
-          )}
           <button onClick={() => setModal('categorias')} className="btn-secondary flex items-center gap-2">
             <LuFolderOpen /> <span className="hidden sm:inline">Categorías</span>
           </button>
@@ -494,9 +494,9 @@ export default function Inventario() {
           <tbody>
             {loading ? (
               <tr><td colSpan={7} className="text-center py-12 text-gray-500">Cargando...</td></tr>
-            ) : productos.length === 0 ? (
+            ) : data.productos.length === 0 ? (
               <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sin productos. Crea el primero ↑</td></tr>
-            ) : productos.map(p => {
+            ) : data.productos.map(p => {
               const bajo = p.stock_actual <= p.stock_minimo
               return (
                 <tr key={p.id} className={bajo ? 'bg-red-900/10' : ''}>
@@ -532,12 +532,30 @@ export default function Inventario() {
         </table>
       </div>
 
+      {data.pages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-5 gap-4">
+          <span className="text-xs text-gray-500 bg-surface-800 px-3 py-1.5 rounded-lg border border-white/5">Página <strong className="text-white">{data.page}</strong> de <strong className="text-white">{data.pages}</strong> · {data.total} elementos</span>
+          <div className="flex gap-1.5 bg-surface-800 p-1 rounded-xl border border-white/5 shadow-inner">
+            <button onClick={() => load(1)} disabled={page === 1} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg" title="Primera">«</button>
+            <button onClick={() => load(page - 1)} disabled={page === 1} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg"><LuChevronLeft /></button>
+            {Array.from({ length: Math.min(5, data.pages) }, (_, i) => {
+              const start = Math.max(1, Math.min(page - 2, data.pages - 4))
+              const _p = start + i
+              if (_p > data.pages) return null
+              return <button key={_p} onClick={() => load(_p)} className={`btn-sm h-8 min-w-[32px] p-0 flex items-center justify-center rounded-lg text-sm transition-colors ${_p === page ? 'bg-brand-600 text-white shadow-md' : 'hover:bg-surface-700 text-gray-400'}`}>{_p}</button>
+            })}
+            <button onClick={() => load(page + 1)} disabled={page === data.pages} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg"><LuChevronRight /></button>
+            <button onClick={() => load(data.pages)} disabled={page === data.pages} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg" title="Última">»</button>
+          </div>
+        </div>
+      )}
+
       {(modal === 'crear' || modal === 'editar') && (
         <ProductoModal producto={modal === 'editar' ? selected : null} categorias={categorias}
-          onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
+          onClose={() => setModal(null)} onSave={() => { setModal(null); load(page) }} />
       )}
       {modal === 'merma' && selected && (
-        <MermaModal producto={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load() }} />
+        <MermaModal producto={selected} onClose={() => setModal(null)} onSave={() => { setModal(null); load(page) }} />
       )}
       {modal === 'categorias' && (
         <CategoryManagerModal onClose={() => setModal(null)} onChanged={load} />

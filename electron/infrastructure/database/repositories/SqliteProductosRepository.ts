@@ -1,4 +1,4 @@
-import { IProductosRepository, Producto, ProductoFilters } from '../../../domain/repositories/interfaces/IProductosRepository';
+import { IProductosRepository, Producto, ProductoFilters, ProductoPaginationParams, PaginatedProductos } from '../../../domain/repositories/interfaces/IProductosRepository';
 import { Result, ResultFactory } from '../../../domain/common/Result';
 import { Database } from '../connection/Database';
 
@@ -58,6 +58,57 @@ export class SqliteProductosRepository implements IProductosRepository {
 
       const rows = await dbConn.all(sql, params);
       return ResultFactory.ok(rows.map(mapProducto));
+    } catch (e) {
+      return ResultFactory.fail(e instanceof Error ? e : String(e));
+    }
+  }
+
+  async paginate(params: ProductoPaginationParams): Promise<Result<PaginatedProductos>> {
+    try {
+      const dbConn = this.db.getConnection();
+      const { page, perPage, search, categoria_id, bajo_stock } = params;
+      const offset = (page - 1) * perPage;
+
+      let sql = `SELECT p.*, c.nombre AS categoria_nombre FROM productos p LEFT JOIN categorias c ON c.id = p.categoria_id`;
+      let countSql = `SELECT COUNT(*) AS total FROM productos p LEFT JOIN categorias c ON c.id = p.categoria_id`;
+      
+      const sqlParams: any[] = [];
+      const where: string[] = [];
+
+      if (search) {
+        const term = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        where.push(`(${this.cleanCol('p.nombre')} LIKE ? OR ${this.cleanCol('p.codigo')} LIKE ? OR ${this.cleanCol('p.marca')} LIKE ?)`);
+        const like = `%${term}%`;
+        sqlParams.push(like, like, like);
+      }
+      if (categoria_id) {
+        where.push('p.categoria_id = ?');
+        sqlParams.push(categoria_id);
+      }
+      if (bajo_stock === true || bajo_stock === 'true') {
+        where.push('p.stock_actual <= p.stock_minimo');
+      }
+
+      if (where.length) {
+        const whereClause = ' WHERE ' + where.join(' AND ');
+        sql += whereClause;
+        countSql += whereClause;
+      }
+      
+      sql += ' ORDER BY p.nombre ASC LIMIT ? OFFSET ?';
+
+      const countRow = await dbConn.get(countSql, sqlParams);
+      const total = countRow?.total || 0;
+
+      const rows = await dbConn.all(sql, [...sqlParams, perPage, offset]);
+      
+      return ResultFactory.ok({
+        productos: rows.map(mapProducto),
+        total,
+        page,
+        perPage,
+        pages: Math.ceil(total / perPage)
+      });
     } catch (e) {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
