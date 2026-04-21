@@ -43,7 +43,7 @@
 
 ## 🎯 Visión Rápida
 
-**JAUV Studio POS** es un sistema de Punto de Venta integral para una papelería y centro de copiado en Venezuela. Diseñado para operar 100% offline con capacidades bimoneda (USD/VES).
+**JAUV Studio POS** es un sistema de Punto de Venta integral para una papelería y centro de copiado en Venezuela. Diseñado para operar 100% offline optimizado para la moneda local (**Bolívares - VES**).
 
 ### Características Clave
 - ✅ Punto de Venta con pagos mixtos (efectivo, pago móvil, transferencia)
@@ -53,13 +53,14 @@
 - ✅ Reportes diarios con cierre de caja automático
 - ✅ Impresión de tickets térmicos
 - ✅ Escaneo de códigos de barras
-- ✅ Multi-moneda con tasa de cambio BCV en tiempo real
+- ✅ Soporte nativo para **Modo Claro / Modo Oscuro** (Temas dinámicos)
+- ✅ Gestión simplificada exclusivamente en Bolívares (VES)
 
 ### Stack Tecnológico
 | Tecnología | Uso |
 |------------|-----|
 | Electron | Framework de escritorio (Windows/Linux/macOS) |
-| React 19 | Interfaz de usuario |
+| React 18 | Interfaz de usuario reactiva |
 | TypeScript | Lenguaje para el Backend (Node.js) |
 | Vite | Build tool y dev server |
 | Tailwind CSS | Estilos utilitarios |
@@ -165,8 +166,11 @@ La base de datos SQLite (`jauv_pos.db`) se almacena en el directorio de datos de
 - Windows: `C:\Users\<Usuario>\AppData\Roaming\jauv-studio-pos\`
 - Linux: `~/.config/jauv-studio-pos/`
 
-**¿Cómo funciona el modo bimoneda?**
-Los precios se guardan en USD y se convierten a VES usando la tasa BCV. Puedes fijar precios directamente en VES también. Ver [api/data-models.md](api/data-models.md).
+**¿Cómo funciona el manejo de moneda?**
+El sistema opera exclusivamente en Bolívares (**VES**). Se han eliminado las complejidades de tasas de cambio dinámicas para garantizar una contabilidad simplificada y precisa acorde a la realidad operativa del negocio.
+
+**¿Cómo activo el Modo Oscuro?**
+El sistema cuenta con un selector de tema (icono de Sol/Luna) en la barra lateral. La preferencia se guarda automáticamente en el almacenamiento local del navegador (localStorage) y se aplica al iniciar la aplicación.
 
 **¿Puedo usar el sistema sin conexión?**
 Sí, es 100% offline. La base de datos es local. El API HTTP solo funciona en red local (puerto 3001) para dispositivos móviles en la misma red.

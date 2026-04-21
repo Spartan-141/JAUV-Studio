@@ -159,8 +159,8 @@ function MermaModal({ producto, onClose, onSave }) {
           <h2 className="text-lg font-bold text-accent-yellow">⚠️ Registrar Merma</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
-        <p className="text-sm text-gray-400 mb-4">
-          Producto: <strong className="text-white">{producto.nombre}</strong> — Stock actual: <strong className="text-white">{producto.stock_actual}</strong>
+        <p className="text-sm mb-4" style={{ color: 'var(--fg-muted)' }}>
+          Producto: <strong style={{ color: 'var(--fg)' }}>{producto.nombre}</strong> — Stock actual: <strong style={{ color: 'var(--fg)' }}>{producto.stock_actual}</strong>
         </p>
         <form onSubmit={submit} className="space-y-4">
           <div>
@@ -283,7 +283,7 @@ function CategoryManagerModal({ onClose, onChanged }) {
         <div className="flex justify-between items-center mb-5 shrink-0">
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2"><LuFolderOpen className="text-brand-400" /> Gestor de Categorías</h2>
-            <p className="text-xs text-gray-500">{cats.length} categorías · {allProds.length} productos</p>
+            <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>{cats.length} categorías · {allProds.length} productos</p>
           </div>
           <button onClick={onClose} className="btn-ghost btn-sm text-xl">✕</button>
         </div>
@@ -299,7 +299,8 @@ function CategoryManagerModal({ onClose, onChanged }) {
             <div className="flex flex-col gap-1 overflow-y-auto flex-1">
               {cats.map(cat => (
                 <div key={cat.id}
-                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors group ${selectedCat?.id === cat.id ? 'bg-brand-600 text-white' : 'bg-surface-700 hover:bg-surface-600'}`}
+                  className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors group ${selectedCat?.id === cat.id ? 'bg-brand-600 text-white' : 'hover:bg-surface-600'}`}
+                  style={selectedCat?.id !== cat.id ? { backgroundColor: 'var(--surface-700)' } : {}}
                   onClick={() => selectCat(cat)}>
                   {editingId === cat.id ? (
                     <>
@@ -312,17 +313,19 @@ function CategoryManagerModal({ onClose, onChanged }) {
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 text-sm font-medium truncate">{cat.nombre}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCat?.id === cat.id ? 'bg-white/20' : 'bg-surface-600'}`}>{cat.total_productos}</span>
+                      <span className="flex-1 text-sm font-medium truncate" style={{ color: selectedCat?.id === cat.id ? 'white' : 'var(--fg)' }}>{cat.nombre}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedCat?.id === cat.id ? 'bg-white/20' : ''}`}
+                        style={selectedCat?.id !== cat.id ? { backgroundColor: 'var(--surface-600)', color: 'var(--fg-muted)' } : {}}>{cat.total_productos}</span>
                       <button onClick={e => { e.stopPropagation(); startEdit(cat) }}
-                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${selectedCat?.id === cat.id ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-white'}`}><LuPencil /></button>
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${selectedCat?.id === cat.id ? 'text-white/70 hover:text-white' : 'hover:text-white'}`}
+                        style={selectedCat?.id !== cat.id ? { color: 'var(--fg-subtle)' } : {}}><LuPencil /></button>
                       <button onClick={e => { e.stopPropagation(); setConfirmDel(cat) }}
                         className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs ${selectedCat?.id === cat.id ? 'text-red-300 hover:text-red-200' : 'text-red-400 hover:text-red-300'}`}><LuTrash2 /></button>
                     </>
                   )}
                 </div>
               ))}
-              {cats.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Sin categorías aún</p>}
+              {cats.length === 0 && <p className="text-sm text-center py-4" style={{ color: 'var(--fg-subtle)' }}>Sin categorías aún</p>}
             </div>
           </div>
 
@@ -331,8 +334,8 @@ function CategoryManagerModal({ onClose, onChanged }) {
               <>
                 <div className="flex items-center justify-between shrink-0">
                   <div>
-                    <p className="text-sm font-semibold text-white">Productos en <span className="text-brand-400">{selectedCat.nombre}</span></p>
-                    <p className="text-xs text-gray-500">{checkedIds.size} seleccionados</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--fg)' }}>Productos en <span className="text-brand-400">{selectedCat.nombre}</span></p>
+                    <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>{checkedIds.size} seleccionados</p>
                   </div>
                   <button onClick={saveAssign} disabled={saving} className="btn-primary btn-sm">
                     {saving ? '⏳ Guardando...' : '💾 Guardar Asignación'}
@@ -340,36 +343,37 @@ function CategoryManagerModal({ onClose, onChanged }) {
                 </div>
                 <input className="input shrink-0" placeholder="Buscar producto..."
                   value={prodSearch} onChange={e => setProdSearch(e.target.value)} />
-                <div className="overflow-y-auto flex-1 border border-white/5 rounded-xl">
+                <div className="overflow-y-auto flex-1 border rounded-xl" style={{ borderColor: 'var(--border)' }}>
                   <table className="w-full text-sm" style={{ minWidth: 'unset' }}>
-                    <thead className="bg-surface-700 sticky top-0 z-10">
+                    <thead className="sticky top-0 z-10" style={{ backgroundColor: 'var(--surface-700)' }}>
                       <tr>
                         <th className="px-3 py-2 text-left">
                           <input type="checkbox" className="accent-brand-500"
                             checked={filteredProds.length > 0 && filteredProds.every(p => checkedIds.has(p.id))}
                             onChange={() => toggleAll(filteredProds)} />
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Producto</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Categoría Actual</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Stock</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase" style={{ color: 'var(--fg-muted)' }}>Producto</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase" style={{ color: 'var(--fg-muted)' }}>Categoría Actual</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold uppercase" style={{ color: 'var(--fg-muted)' }}>Stock</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredProds.map(p => (
                         <tr key={p.id}
-                          className={`border-t border-white/5 cursor-pointer transition-colors ${checkedIds.has(p.id) ? 'bg-brand-600/10' : 'hover:bg-surface-700/50'}`}
+                          className={`border-t cursor-pointer transition-colors ${checkedIds.has(p.id) ? 'bg-brand-600/10' : 'hover:bg-surface-700/50'}`}
+                          style={{ borderColor: 'var(--border)' }}
                           onClick={() => toggleCheck(p.id)}>
                           <td className="px-3 py-2"><input type="checkbox" className="accent-brand-500" checked={checkedIds.has(p.id)} onChange={() => toggleCheck(p.id)} onClick={e => e.stopPropagation()} /></td>
                           <td className="px-3 py-2">
-                            <p className="font-medium text-white">{p.nombre}</p>
-                            {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
+                            <p className="font-medium" style={{ color: 'var(--fg)' }}>{p.nombre}</p>
+                            {p.marca && <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{p.marca}</p>}
                           </td>
                           <td className="px-3 py-2">
                             {p.categoria_nombre
                               ? <span className={`badge-blue text-xs ${p.categoria_id === selectedCat.id ? 'bg-brand-600/30 text-brand-300 border-brand-500/30' : ''}`}>{p.categoria_nombre}</span>
-                              : <span className="text-gray-500 text-xs">—</span>}
+                              : <span className="text-xs" style={{ color: 'var(--fg-subtle)' }}>—</span>}
                           </td>
-                          <td className="px-3 py-2 text-gray-400">{p.stock_actual}</td>
+                          <td className="px-3 py-2" style={{ color: 'var(--fg-muted)' }}>{p.stock_actual}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -377,8 +381,8 @@ function CategoryManagerModal({ onClose, onChanged }) {
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center flex-1 text-gray-500">
-                <LuFolderOpen className="text-4xl mb-3 text-gray-600" />
+              <div className="flex flex-col items-center justify-center flex-1" style={{ color: 'var(--fg-subtle)' }}>
+                <LuFolderOpen className="text-4xl mb-3 opacity-20" />
                 <p className="text-sm">Selecciona una categoría para gestionar sus productos</p>
               </div>
             )}
@@ -450,7 +454,7 @@ export default function Inventario() {
       <div className="page-header">
         <div>
           <h1 className="page-title">📦 Inventario</h1>
-          <p className="text-sm text-gray-500">{data.total} productos · {categorias.length} categorías</p>
+          <p className="text-sm" style={{ color: 'var(--fg-muted)' }}>{data.total} productos · {categorias.length} categorías</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setModal('categorias')} className="btn-secondary flex items-center gap-2">
@@ -464,7 +468,7 @@ export default function Inventario() {
 
       <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
         <div className="relative flex-1 min-w-[160px] max-w-sm">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><LuSearch /></span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--fg-subtle)' }}><LuSearch /></span>
           <input className="input w-full pl-10" placeholder="Buscar por nombre, código..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -472,7 +476,7 @@ export default function Inventario() {
           <option value="">Todas las categorías</option>
           {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
-        <div className="flex items-center gap-2 text-sm text-gray-300">
+        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--fg-muted)' }}>
           <input type="checkbox" id="bajo" checked={filterBajoStock} onChange={e => setFilterBajoStock(e.target.checked)} className="accent-brand-500" />
           <label htmlFor="bajo">Solo bajo stock</label>
         </div>
@@ -493,20 +497,20 @@ export default function Inventario() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-12 text-gray-500">Cargando...</td></tr>
+              <tr><td colSpan={7} className="text-center py-12" style={{ color: 'var(--fg-subtle)' }}>Cargando...</td></tr>
             ) : data.productos.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-12 text-gray-500">Sin productos. Crea el primero ↑</td></tr>
+              <tr><td colSpan={7} className="text-center py-12" style={{ color: 'var(--fg-subtle)' }}>Sin productos. Crea el primero ↑</td></tr>
             ) : data.productos.map(p => {
               const bajo = p.stock_actual <= p.stock_minimo
               return (
                 <tr key={p.id} className={bajo ? 'bg-red-900/10' : ''}>
                   <td><span className="font-mono text-xs text-brand-400">{p.codigo}</span></td>
                   <td>
-                    <p className="font-medium text-white">{p.nombre}</p>
-                    {p.marca && <p className="text-xs text-gray-500">{p.marca}</p>}
+                    <p className="font-medium" style={{ color: 'var(--fg)' }}>{p.nombre}</p>
+                    {p.marca && <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{p.marca}</p>}
                   </td>
                   <td><span className="badge-blue">{p.categoria_nombre || '—'}</span></td>
-                  <td className="text-right text-gray-400">{fmt(p.precio_compra)}</td>
+                  <td className="text-right" style={{ color: 'var(--fg-muted)' }}>{fmt(p.precio_compra)}</td>
                   <td className="text-right">
                     <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">
                       {fmt(p.precio_venta)}
@@ -514,7 +518,8 @@ export default function Inventario() {
                   </td>
                   <td className="text-center">
                     <div className="flex flex-col items-center gap-1">
-                      <span className={`font-bold text-sm ${bajo ? 'text-red-400' : 'text-white'}`}>{p.stock_actual}</span>
+                      <span className={`font-bold text-sm ${bajo ? 'text-red-400' : ''}`}
+                        style={!bajo ? { color: 'var(--fg)' } : {}}>{p.stock_actual}</span>
                       {bajo && <span className="badge-red text-xs transition-colors flex items-center gap-1"><LuTriangleAlert /> mín {p.stock_minimo}</span>}
                     </div>
                   </td>
@@ -534,15 +539,16 @@ export default function Inventario() {
 
       {data.pages > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between mt-5 gap-4">
-          <span className="text-xs text-gray-500 bg-surface-800 px-3 py-1.5 rounded-lg border border-white/5">Página <strong className="text-white">{data.page}</strong> de <strong className="text-white">{data.pages}</strong> · {data.total} elementos</span>
-          <div className="flex gap-1.5 bg-surface-800 p-1 rounded-xl border border-white/5 shadow-inner">
+          <span className="text-xs px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-muted)', backgroundColor: 'var(--surface-800)', borderColor: 'var(--border)' }}>Página <strong style={{ color: 'var(--fg)' }}>{data.page}</strong> de <strong style={{ color: 'var(--fg)' }}>{data.pages}</strong> · {data.total} elementos</span>
+          <div className="flex gap-1.5 p-1 rounded-xl border shadow-inner" style={{ backgroundColor: 'var(--surface-800)', borderColor: 'var(--border)' }}>
             <button onClick={() => load(1)} disabled={page === 1} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg" title="Primera">«</button>
             <button onClick={() => load(page - 1)} disabled={page === 1} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg"><LuChevronLeft /></button>
             {Array.from({ length: Math.min(5, data.pages) }, (_, i) => {
               const start = Math.max(1, Math.min(page - 2, data.pages - 4))
               const _p = start + i
               if (_p > data.pages) return null
-              return <button key={_p} onClick={() => load(_p)} className={`btn-sm h-8 min-w-[32px] p-0 flex items-center justify-center rounded-lg text-sm transition-colors ${_p === page ? 'bg-brand-600 text-white shadow-md' : 'hover:bg-surface-700 text-gray-400'}`}>{_p}</button>
+              return <button key={_p} onClick={() => load(_p)} className={`btn-sm h-8 min-w-[32px] p-0 flex items-center justify-center rounded-lg text-sm transition-colors ${_p === page ? 'bg-brand-600 text-white shadow-md' : 'hover:bg-surface-700'}`}
+                style={_p !== page ? { color: 'var(--fg-subtle)' } : {}}>{_p}</button>
             })}
             <button onClick={() => load(page + 1)} disabled={page === data.pages} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg"><LuChevronRight /></button>
             <button onClick={() => load(data.pages)} disabled={page === data.pages} className="btn-ghost btn-sm h-8 w-8 p-0 flex items-center justify-center rounded-lg" title="Última">»</button>

@@ -2,56 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — CSS Custom Properties
+   Light mode values are in :root (default)
+   Dark mode values are in .dark (applied via JS class toggle)
+   ═══════════════════════════════════════════════════════════════ */
 @layer base {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
+  :root {
+    /* ── Surface layers (Light) ── */
+    --surface-900: #f8fafc;   /* page background */
+    --surface-800: #ffffff;   /* card background */
+    --surface-700: #f1f5f9;   /* elevated surface / table header */
+    --surface-600: #e2e8f0;   /* input, button secondary */
+    --surface-500: #cbd5e1;   /* dividers, borders strong */
+
+    /* ── Text (Light) ── */
+    --fg:         #0f172a;    /* primary text */
+    --fg-muted:   #475569;    /* secondary labels */
+    --fg-subtle:  #64748b;    /* hints, placeholders */
+    --fg-dim:     #334155;    /* table body text */
+
+    /* ── Borders (Light) ── */
+    --border:       rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+
+    /* ── Scrollbar (Light) ── */
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-track: #f1f5f9;
+
+    /* ── Shadows (Light) ── */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-modal: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
   }
 
-  :root {
+  .dark {
+    /* ── Surface layers (Dark) ── */
+    --surface-900: #0f0f1a;
+    --surface-800: #161625;
+    --surface-700: #1e1e33;
+    --surface-600: #252540;
+    --surface-500: #2e2e50;
+
+    /* ── Text (Dark) ── */
+    --fg:         #ffffff;
+    --fg-muted:   #94a3b8;
+    --fg-subtle:  #64748b;
+    --fg-dim:     #e2e8f0;
+
+    /* ── Borders (Dark) ── */
+    --border:       rgba(255, 255, 255, 0.05);
+    --border-strong: rgba(255, 255, 255, 0.10);
+
+    /* ── Scrollbar (Dark) ── */
     --scrollbar-thumb: #2e2e50;
     --scrollbar-track: #161625;
+
+    /* ── Shadows (Dark) ── */
+    --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+    --shadow-modal: 0 8px 40px rgba(0,0,0,0.6);
+  }
+
+  /* ── Reset ── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   body {
-    @apply bg-surface-900 text-white font-sans;
+    background-color: var(--surface-900);
+    color: var(--fg);
+    @apply font-sans;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     user-select: none;
   }
 
-  /* On mobile, allow scroll */
   @media (max-width: 767px) {
-    body {
-      overflow: auto;
-    }
+    body { overflow: auto; }
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 3px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #4338ca;
-  }
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar          { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track    { background: var(--scrollbar-track); }
+  ::-webkit-scrollbar-thumb    { background: var(--scrollbar-thumb); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4338ca; }
 
-  input,
-  textarea,
-  select {
-    user-select: text;
-  }
+  input, textarea, select { user-select: text; }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENT LAYER — All themed via CSS variables
+   ═══════════════════════════════════════════════════════════════ */
 @layer components {
-  /* === Buttons === */
+
+  /* ── Buttons ── */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
            transition-all duration-150 cursor-pointer select-none outline-none;
@@ -60,156 +105,165 @@
     @apply btn bg-brand-600 text-white hover:bg-brand-500 active:scale-95 shadow-glow;
   }
   .btn-secondary {
-    @apply btn bg-surface-600 text-white hover:bg-surface-500 active:scale-95;
+    background-color: var(--surface-600);
+    color: var(--fg);
+    @apply btn active:scale-95;
   }
+  .btn-secondary:hover { background-color: var(--surface-500); }
+
   .btn-danger {
     @apply btn bg-red-600/90 text-white hover:bg-red-500 active:scale-95;
   }
   .btn-ghost {
-    @apply btn text-gray-300 hover:bg-surface-600 hover:text-white active:scale-95;
+    color: var(--fg-muted);
+    @apply btn active:scale-95;
+  }
+  .btn-ghost:hover {
+    background-color: var(--surface-700);
+    color: var(--fg);
   }
   .btn-success {
     @apply btn bg-accent-green text-white hover:bg-emerald-400 active:scale-95 shadow-glow-green;
   }
-  .btn-sm {
-    @apply px-3 py-1.5 text-xs rounded-md;
-  }
-  .btn-lg {
-    @apply px-6 py-3 text-base rounded-xl;
-  }
+  .btn-sm  { @apply px-3 py-1.5 text-xs rounded-md; }
+  .btn-lg  { @apply px-6 py-3 text-base rounded-xl; }
 
-  /* === Cards === */
+  /* ── Cards ── */
   .card {
-    @apply bg-surface-800 rounded-2xl border border-white/5 shadow-xl;
+    background-color: var(--surface-800);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    @apply rounded-2xl;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  .card-p {
-    @apply card p-5;
-  }
+  .card-p { @apply card p-5; }
 
-  /* === Form inputs === */
+  /* ── Form inputs ── */
   .input {
-    @apply w-full bg-surface-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white
-           placeholder-gray-500 outline-none transition-all
-           focus:border-brand-500 focus:ring-1 focus:ring-brand-500/40;
+    width: 100%;
+    background-color: var(--surface-700);
+    border: 1px solid var(--border-strong);
+    color: var(--fg);
+    @apply rounded-lg px-3 py-2 text-sm outline-none transition-all;
   }
-  .input-sm {
-    @apply input px-2.5 py-1.5 text-xs;
+  .input::placeholder      { color: var(--fg-subtle); }
+  .input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
   }
+  .input-sm { @apply input px-2.5 py-1.5 text-xs; }
+
   .label {
-    @apply block text-xs font-medium text-gray-400 mb-1;
+    color: var(--fg-muted);
+    @apply block text-xs font-medium mb-1;
   }
 
   .select {
     @apply input appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
   }
 
-  /* === Badges === */
-  .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
-  }
-  .badge-green {
-    @apply badge bg-accent-green/20 text-accent-green;
-  }
-  .badge-red {
-    @apply badge bg-red-500/20 text-red-400;
-  }
-  .badge-yellow {
-    @apply badge bg-accent-yellow/20 text-accent-yellow;
-  }
-  .badge-blue {
-    @apply badge bg-accent-blue/20 text-accent-blue;
-  }
-  .badge-purple {
-    @apply badge bg-accent-purple/20 text-accent-purple;
+  /* Light mode select arrow */
+  :root .select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
   }
 
-  /* === Tables === */
+  /* ── Badges ── */
+  .badge        { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium; }
+  .badge-green  { @apply badge bg-accent-green/20 text-accent-green; }
+  .badge-red    { @apply badge bg-red-500/20 text-red-400; }
+  .badge-yellow { @apply badge bg-amber-500/20 text-amber-500; }
+  .badge-blue   { @apply badge bg-blue-500/20 text-blue-500; }
+  .badge-purple { @apply badge bg-purple-500/20 text-purple-500; }
+
+  /* ── Tables ── */
   .table-wrapper {
-    @apply overflow-auto rounded-xl border border-white/5;
+    border: 1px solid var(--border);
+    @apply overflow-auto rounded-xl;
   }
   table {
     @apply w-full text-sm;
-    min-width: 520px; /* ensures horizontal scroll on mobile */
+    min-width: 520px;
   }
-  thead tr {
-    @apply bg-surface-700;
+  thead tr  { background-color: var(--surface-700); }
+  thead th  {
+    color: var(--fg-muted);
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
   }
-  thead th {
-    @apply px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider;
+  tbody tr  {
+    border-top: 1px solid var(--border);
+    transition: background-color 0.1s ease;
   }
-  tbody tr {
-    @apply border-t border-white/5 hover:bg-surface-700/50 transition-colors;
-  }
-  tbody td {
-    @apply px-4 py-3 text-gray-200;
+  tbody tr:hover { background-color: var(--surface-700); }
+  tbody td  {
+    color: var(--fg-dim);
+    @apply px-4 py-3;
   }
 
-  /* === Modals === */
+  /* ── Modals ── */
   .modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-fade-in p-4;
+    @apply fixed inset-0 z-50 flex items-center justify-center animate-fade-in p-4;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
   }
   .modal {
     @apply card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-in;
+    box-shadow: var(--shadow-modal);
   }
   .modal-lg {
     @apply card p-6 w-full max-w-4xl animate-slide-in;
     max-height: 90vh;
     overflow: hidden;
+    box-shadow: var(--shadow-modal);
   }
-  .modal-xl {
-    @apply modal max-w-4xl;
-  }
+  .modal-xl { @apply modal max-w-4xl; }
 
-  /* === Page layout === */
+  /* ── Page layout ── */
   .page {
     @apply flex flex-col gap-5 h-full overflow-y-auto;
-    padding: 1.5rem; /* p-6 */
-    padding-bottom: 5rem; /* extra bottom space for mobile bottom nav */
+    padding: 1.5rem;
+    padding-bottom: 5rem;
   }
-
   @media (max-width: 767px) {
-    .page {
-      padding: 0.875rem; /* p-3.5 on mobile */
-      padding-bottom: 5.5rem; /* bigger bottom for the nav bar */
-    }
+    .page { padding: 0.875rem; padding-bottom: 5.5rem; }
   }
 
   .page-header {
     @apply flex items-start sm:items-center justify-between gap-3 flex-wrap;
   }
   .page-title {
-    @apply text-xl sm:text-2xl font-bold text-white;
+    color: var(--fg);
+    @apply text-xl sm:text-2xl font-bold;
   }
 
-  /* === Stat cards === */
-  .stat-card {
-    @apply card-p flex flex-col gap-1;
-  }
-  .stat-value {
-    @apply text-2xl font-bold text-white;
-  }
-  .stat-label {
-    @apply text-xs text-gray-400 uppercase tracking-wider;
+  /* ── Stat cards ── */
+  .stat-card  { @apply card-p flex flex-col gap-1; }
+  .stat-value { color: var(--fg); @apply text-2xl font-bold; }
+  .stat-label { color: var(--fg-muted); @apply text-xs uppercase tracking-wider; }
+
+  /* ── Theme toggle button ── */
+  .button-theme-toggle {
+    width: 38px;
+    height: 38px;
+    background-color: var(--surface-700);
+    border: 1px solid var(--border-strong);
+    color: var(--fg);
+    @apply flex items-center justify-center rounded-xl transition-all duration-300
+           hover:scale-105 active:scale-95 hover:bg-surface-600 shadow-sm
+           focus:outline-none focus:ring-2 focus:ring-brand-500/20;
   }
 }
 
-/* Print styles for thermal tickets */
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════ */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
-    overflow: visible !important;
-  }
-  .no-print {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  * {
-    color: black !important;
-    background: white !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
+  body { background: white !important; color: black !important; overflow: visible !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  * { color: black !important; background: white !important; border: none !important; box-shadow: none !important; }
 }

@@ -45,8 +45,8 @@ export default function Dashboard() {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-surface-800 border border-white/10 p-3 rounded-lg shadow-xl">
-          <p className="text-gray-400 text-xs mb-1">{format(parseISO(label), "d MMM", {locale: es})}</p>
+        <div className="card p-3 rounded-lg shadow-xl" style={{ border: '1px solid var(--border-strong)' }}>
+          <p className="text-xs mb-1" style={{ color: 'var(--fg-muted)' }}>{format(parseISO(label), "d MMM", {locale: es})}</p>
           <p className="text-brand-400 font-bold">{fmt(payload[0].value)}</p>
         </div>
       );
@@ -57,14 +57,14 @@ export default function Dashboard() {
   return (
     <div className="page pb-10 space-y-6">
       {/* HEADER */}
-      <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
+      <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Hello, JAUV Studio</h1>
-          <p className="text-xs sm:text-sm text-gray-500 capitalize">{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}</p>
+          <h1 className="text-xl sm:text-3xl font-bold" style={{ color: 'var(--fg)' }}>Hello, JAUV Studio</h1>
+          <p className="text-xs sm:text-sm capitalize" style={{ color: 'var(--fg-subtle)' }}>{format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}</p>
         </div>
-        <div className="flex items-center gap-3 bg-surface-800/80 backdrop-blur py-2 px-4 rounded-2xl border border-white/5 shadow-xl">
+        <div className="flex items-center gap-3 card backdrop-blur py-2 px-4 rounded-2xl shadow-xl">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Moneda</span>
+            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--fg-subtle)' }}>Moneda</span>
             <span className="font-mono font-bold text-base sm:text-lg text-brand-400">Bolívar (Bs.)</span>
           </div>
         </div>
@@ -77,17 +77,19 @@ export default function Dashboard() {
           {/* STAT CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
             {STATS.map(s => (
-              <div key={s.label} className={`relative overflow-hidden rounded-2xl p-5 border border-white/5 bg-gradient-to-br ${s.bg} backdrop-blur-md shadow-lg group`}>
+              <div key={s.label} className={`relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br ${s.bg} backdrop-blur-md shadow-lg group`}
+                style={{ border: '1px solid var(--border)' }}>
                 <div className="absolute -right-6 -top-6 text-9xl opacity-5 group-hover:scale-110 transition-transform duration-500">
                   {s.icon}
                 </div>
                 <div className="relative z-10 flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-gray-400 mb-1">{s.label}</p>
-                    <p className="text-3xl font-bold text-white mb-2">{s.value}</p>
-                    <p className="text-xs text-gray-500">{s.sub}</p>
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--fg-muted)' }}>{s.label}</p>
+                    <p className="text-3xl font-bold mb-2" style={{ color: 'var(--fg)' }}>{s.value}</p>
+                    <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{s.sub}</p>
                   </div>
-                  <div className={`p-3 rounded-xl bg-surface-900/50 text-xl border border-white/5`} style={{ color: `rgb(var(--tw-${s.color}, 255,255,255))` }}>
+                  <div className={`p-3 rounded-xl text-xl`}
+                    style={{ backgroundColor: 'var(--surface-900)', border: '1px solid var(--border)' }}>
                     {s.icon}
                   </div>
                 </div>
@@ -97,11 +99,11 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* MAIN CHART - SALES TREND */}
-            <div className="md:col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
+            <div className="md:col-span-2 card p-6 backdrop-blur-md shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Rendimiento Semanal</h2>
-                  <p className="text-xs text-gray-500">Curva de ingresos de los últimos 7 días</p>
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--fg)' }}>Rendimiento Semanal</h2>
+                  <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>Curva de ingresos de los últimos 7 días</p>
                 </div>
                 <div className="bg-brand-500/20 text-brand-300 p-2 rounded-lg"><LuTrendingUp /></div>
               </div>
@@ -114,45 +116,47 @@ export default function Dashboard() {
                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="fecha" tickFormatter={(str) => format(parseISO(str), 'd MMM', {locale: es})} stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                    <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`Bs.${v}`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="fecha" tickFormatter={(str) => format(parseISO(str), 'd MMM', {locale: es})} stroke="var(--fg-subtle)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                    <YAxis stroke="var(--fg-subtle)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v)=>`Bs.${v}`} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="total" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
                   </AreaChart>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-500 text-sm">Sin datos suficientes</div>
+                  <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--fg-subtle)' }}>Sin datos suficientes</div>
                 )}
               </div>
             </div>
 
             {/* TOP PRODUCTS PIE / BAR */}
-            <div className="md:col-span-1 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl flex flex-col">
+            <div className="md:col-span-1 card p-6 backdrop-blur-md shadow-xl flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Top Productos</h2>
-                  <p className="text-xs text-gray-500">Más vendidos (30 días)</p>
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--fg)' }}>Top Productos</h2>
+                  <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>Más vendidos (30 días)</p>
                 </div>
                 <div className="bg-emerald-500/20 text-emerald-300 p-2 rounded-lg"><LuPackage /></div>
               </div>
               <div className="flex-1 overflow-y-auto space-y-3">
                 {metrics?.top_productos?.length > 0 ? (
                   metrics.top_productos.map((p, i) => (
-                    <div key={i} className="flex items-center p-3 rounded-xl bg-surface-700/30 border border-white/5 hover:bg-surface-700/70 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-surface-900 flex items-center justify-center font-bold text-sm text-gray-400 mr-3 shadow-inner">
+                    <div key={i} className="flex items-center p-3 rounded-xl border transition-colors"
+                      style={{ backgroundColor: 'var(--surface-700)', borderColor: 'var(--border)' }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mr-3 shadow-inner"
+                        style={{ backgroundColor: 'var(--surface-900)', color: 'var(--fg-muted)' }}>
                         {i + 1}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-white line-clamp-1" title={p.nombre}>{p.nombre}</p>
-                        <p className="text-xs text-emerald-400">{p.total_vendido} vendidos</p>
+                        <p className="text-sm font-medium line-clamp-1" style={{ color: 'var(--fg)' }} title={p.nombre}>{p.nombre}</p>
+                        <p className="text-xs text-emerald-500">{p.total_vendido} vendidos</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-white">{fmt(p.ingresos)}</p>
+                        <p className="text-sm font-bold" style={{ color: 'var(--fg)' }}>{fmt(p.ingresos)}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-500 text-sm text-center py-4">Sin datos de productos</p>
+                  <p className="text-sm text-center py-4" style={{ color: 'var(--fg-subtle)' }}>Sin datos de productos</p>
                 )}
               </div>
             </div>
@@ -160,25 +164,26 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              {/* RECENT SALES */}
-             <div className="md:col-span-2 card p-6 bg-surface-800/50 backdrop-blur-md border border-white/5 shadow-xl">
-               <h2 className="text-lg font-bold text-white mb-4">Transacciones Recientes</h2>
+             <div className="md:col-span-2 card p-6 backdrop-blur-md shadow-xl">
+               <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--fg)' }}>Transacciones Recientes</h2>
                {ventas.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-8">Sin ventas registradas hoy</p>
+                  <p className="text-sm text-center py-8" style={{ color: 'var(--fg-subtle)' }}>Sin ventas registradas hoy</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-4">
                     {ventas.map(v => (
-                      <div key={v.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-700/20 border border-white/5">
+                      <div key={v.id} className="flex items-center justify-between p-4 rounded-xl border transition-colors"
+                        style={{ backgroundColor: 'var(--surface-700)', borderColor: 'var(--border)' }}>
                         <div className="flex items-center gap-3">
                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${v.estado === 'credito' ? 'bg-orange-500/20 text-orange-400' : 'bg-brand-500/20 text-brand-400'}`}>
                              {v.estado === 'credito' ? <LuClock /> : <LuBanknote />}
                            </div>
                            <div>
-                             <p className="text-sm text-white font-medium">Venta #{v.id}</p>
-                             <p className="text-xs text-gray-500">{v.cliente_nombre || 'Consumidor Final'} • {v.fecha?.slice(11,16)}</p>
+                             <p className="text-sm font-medium" style={{ color: 'var(--fg)' }}>Venta #{v.id}</p>
+                             <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{v.cliente_nombre || 'Consumidor Final'} • {v.fecha?.slice(11,16)}</p>
                            </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-white mb-1">{fmt(v.total)}</p>
+                          <p className="text-sm font-bold mb-1" style={{ color: 'var(--fg)' }}>{fmt(v.total)}</p>
                           <span className={`${v.estado === 'credito' ? 'badge-yellow' : 'badge-green'} text-[10px] uppercase font-bold tracking-wider`}>
                             {v.estado}
                           </span>
@@ -190,11 +195,11 @@ export default function Dashboard() {
              </div>
 
              {/* DEUDORES */}
-             <div className="md:col-span-1 border border-white/5 p-6 rounded-2xl bg-gradient-to-b from-surface-800/80 to-surface-800/30 backdrop-blur-md shadow-xl flex flex-col">
+             <div className="md:col-span-1 p-6 rounded-2xl backdrop-blur-md shadow-xl flex flex-col card">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white">Cuentas Pendientes</h2>
-                  <p className="text-xs text-gray-500">Top deudores activos</p>
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--fg)' }}>Cuentas Pendientes</h2>
+                  <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>Top deudores activos</p>
                 </div>
                 <div className="bg-orange-500/20 text-orange-300 p-2 rounded-lg"><LuUsers /></div>
               </div>
@@ -202,10 +207,11 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {metrics?.top_deudores?.length > 0 ? (
                   metrics.top_deudores.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-surface-900/40 border border-orange-500/10">
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-orange-500/10"
+                      style={{ backgroundColor: 'var(--surface-900)' }}>
                       <div>
-                        <p className="text-sm font-medium text-white line-clamp-1">{d.nombre}</p>
-                        <p className="text-xs text-gray-500">Deuda acumulada</p>
+                        <p className="text-sm font-medium line-clamp-1" style={{ color: 'var(--fg)' }}>{d.nombre}</p>
+                        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>Deuda acumulada</p>
                       </div>
                       <p className="text-orange-400 font-bold ml-2">{fmt(d.deuda)}</p>
                     </div>

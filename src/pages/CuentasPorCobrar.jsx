@@ -77,9 +77,9 @@ function AbonoModal({ venta, onClose, onSave }) {
           <h2 className="text-lg font-bold">💰 Registrar Abono</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
-        <div className="bg-surface-700 rounded-xl p-3 mb-4">
-          <p className="text-sm text-gray-400">Cliente: <strong className="text-white">{venta.cliente_nombre}</strong></p>
-          <p className="text-sm text-gray-400 mt-1">
+        <div className="rounded-xl p-3 mb-4" style={{ backgroundColor: 'var(--surface-700)' }}>
+          <p className="text-sm" style={{ color: 'var(--fg-muted)' }}>Cliente: <strong style={{ color: 'var(--fg)' }}>{venta.cliente_nombre}</strong></p>
+          <p className="text-sm mt-1" style={{ color: 'var(--fg-muted)' }}>
             Saldo Pendiente: <strong className="text-red-400">{fmt(venta.saldo_pendiente)}</strong>
           </p>
         </div>
@@ -161,27 +161,28 @@ function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-sm">
-          <div className="bg-surface-700 rounded-xl p-3">
-            <p className="text-gray-400 text-xs">Total Original</p>
-            <p className="font-bold text-white">{fmt(data.total)}</p>
+          <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--surface-700)' }}>
+            <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>Total Original</p>
+            <p className="font-bold" style={{ color: 'var(--fg)' }}>{fmt(data.total)}</p>
           </div>
-          <div className="bg-surface-700 rounded-xl p-3">
-            <p className="text-gray-400 text-xs">Pagado</p>
+          <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--surface-700)' }}>
+            <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>Pagado</p>
             <p className="font-bold text-accent-green">{fmt(pagado)}</p>
           </div>
           <div className="bg-red-900/20 rounded-xl p-3 border border-red-500/30 flex flex-col justify-between">
             <div>
-              <p className="text-gray-400 text-xs">Pendiente (Bs.)</p>
+              <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>Pendiente (Bs.)</p>
               <p className="font-bold text-red-400">{fmt(data.saldo_pendiente)}</p>
             </div>
             <button onClick={() => { onClose(); openModificar(data) }}
-              className="mt-2 w-full text-xs bg-surface-600 hover:bg-surface-500 text-white rounded py-1 transition-colors">
+              className="mt-2 w-full text-xs rounded py-1 transition-colors"
+              style={{ backgroundColor: 'var(--surface-600)', color: 'var(--fg)' }}>
               ✏️ Modificar Deuda
             </button>
           </div>
         </div>
 
-        <h3 className="font-semibold text-white mb-2">Artículos</h3>
+        <h3 className="font-semibold mb-2" style={{ color: 'var(--fg)' }}>Artículos</h3>
         <div className="table-wrapper mb-4 max-h-40 overflow-y-auto">
           <table><thead><tr><th>Descripción</th><th className="text-center">Cant</th><th className="text-right">P.Unit</th><th className="text-right">Subtotal</th></tr></thead>
             <tbody>{data.detalles?.map((d, i) => {
@@ -218,13 +219,14 @@ function DetalleModal({ ventaId, onClose, openModificar, onUpdated }) {
           </table>
         </div>
 
-        <h3 className="font-semibold text-white mb-2">Historial de Pagos</h3>
+        <h3 className="font-semibold mb-2" style={{ color: 'var(--fg)' }}>Historial de Pagos</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {[...(data.pagos || []), ...(data.abonos || [])].sort((a, b) => a.fecha > b.fecha ? 1 : -1).map((p, i) => (
-            <div key={i} className="flex justify-between items-center text-sm bg-surface-700 rounded-lg px-3 py-2">
+            <div key={i} className="flex justify-between items-center text-sm rounded-lg px-3 py-2"
+              style={{ backgroundColor: 'var(--surface-700)' }}>
               <div>
-                <span className="text-white block font-medium">{METODO_LABEL[p.metodo] || p.metodo}</span>
-                <span className="text-gray-500 text-xs">{p.fecha?.slice(0, 16)}</span>
+                <span className="block font-medium" style={{ color: 'var(--fg)' }}>{METODO_LABEL[p.metodo] || p.metodo}</span>
+                <span className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{p.fecha?.slice(0, 16)}</span>
               </div>
               <span className="text-accent-green font-semibold">{fmt(p.monto)}</span>
             </div>
@@ -264,7 +266,7 @@ export default function CuentasPorCobrar() {
       <div className="page-header flex-wrap gap-4 items-end">
         <div>
           <h1 className="page-title">📋 Cuentas por Cobrar</h1>
-          <p className="text-sm text-gray-500">{filteredVentas.length} créditos activos {search ? 'encontrados' : ''}</p>
+          <p className="text-sm" style={{ color: 'var(--fg-muted)' }}>{filteredVentas.length} créditos activos {search ? 'encontrados' : ''}</p>
         </div>
 
         <div className="flex-1 min-w-[200px] max-w-sm">
@@ -297,15 +299,15 @@ export default function CuentasPorCobrar() {
                     <tr key={v.id}>
                       <td className="font-mono text-brand-400">#{v.id}</td>
                       <td>
-                        <p className="font-medium text-white">{v.cliente_nombre}</p>
-                        <p className="text-xs text-gray-500">{v.fecha?.slice(0, 10)}</p>
+                        <p className="font-medium" style={{ color: 'var(--fg)' }}>{v.cliente_nombre}</p>
+                        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{v.fecha?.slice(0, 10)}</p>
                       </td>
-                      <td className="text-gray-400 text-xs">{v.fecha?.slice(11, 16)}</td>
-                      <td className="text-right text-gray-300">{fmt(v.total)}</td>
+                      <td className="text-xs" style={{ color: 'var(--fg-muted)' }}>{v.fecha?.slice(11, 16)}</td>
+                      <td className="text-right" style={{ color: 'var(--fg-dim)' }}>{fmt(v.total)}</td>
                       <td className="text-right">
                         <div>
                           <span className="text-accent-green font-medium">{fmt(pagado)}</span>
-                          <div className="w-full bg-surface-600 rounded-full h-1 mt-1">
+                          <div className="w-full rounded-full h-1 mt-1" style={{ backgroundColor: 'var(--surface-600)' }}>
                             <div className="bg-accent-green h-1 rounded-full" style={{ width: `${pct}%` }} />
                           </div>
                         </div>

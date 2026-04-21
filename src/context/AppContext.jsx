@@ -27,9 +27,30 @@ if (typeof window !== 'undefined' && !window.api) {
 const AppContext = createContext(null)
 
 export function AppProvider({ children }) {
-  const [config, setConfig] = useState({})
+  const [config, setConfig]   = useState({})
   const [loading, setLoading] = useState(true)
 
+  // ── Theme (persisted in localStorage, applied to <html> element) ──────────
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('jauv-theme') || 'dark'
+  })
+
+  // Apply class to <html> whenever theme changes
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+    localStorage.setItem('jauv-theme', theme)
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark')
+  }, [])
+
+  // ── Config (persisted in SQLite via Electron config:* channels) ──────────
   const loadConfig = useCallback(async () => {
     try {
       const cfg = await window.api.invoke('config:getAll')
@@ -48,13 +69,13 @@ export function AppProvider({ children }) {
     setConfig(prev => ({ ...prev, [clave]: valor }))
   }, [])
 
-  // Format a VES amount as Bolívares
+  // ── Currency formatter ────────────────────────────────────────────────────
   const fmt = useCallback((ves) => {
     return `Bs. ${Number(ves || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }, [])
 
   return (
-    <AppContext.Provider value={{ config, loading, loadConfig, updateConfig, fmt }}>
+    <AppContext.Provider value={{ config, loading, loadConfig, updateConfig, fmt, theme, toggleTheme }}>
       {children}
     </AppContext.Provider>
   )

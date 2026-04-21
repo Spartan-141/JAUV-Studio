@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { LuLayoutDashboard, LuShoppingCart, LuPackage, LuPrinter, LuClipboardList, LuChartColumn } from 'react-icons/lu'
+import { LuLayoutDashboard, LuShoppingCart, LuPackage, LuPrinter, LuClipboardList, LuChartColumn, LuSun, LuMoon } from 'react-icons/lu'
 import { HashRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import SplashScreen from './components/SplashScreen.jsx'
 import logoLateral from '../img/logo_barra_lateral.png'
-import { AppProvider } from './context/AppContext.jsx'
+import { AppProvider, useApp } from './context/AppContext.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Inventario from './pages/Inventario.jsx'
 import CentroCopiado from './pages/CentroCopiado.jsx'
@@ -21,12 +21,34 @@ const NAV_ITEMS = [
   { to: '/reportes',   icon: <LuChartColumn />,     label: 'Reportes' },
 ]
 
+/* ─── Theme Toggle Button ──────────────────────────────────────────────────── */
+function ThemeToggle() {
+  const { theme, toggleTheme } = useApp()
+  const isDark = theme === 'dark'
+
+  return (
+    <button
+      onClick={toggleTheme}
+      aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      title={isDark ? 'Modo claro' : 'Modo oscuro'}
+      className="button-theme-toggle"
+    >
+      <div className="relative w-6 h-6 flex items-center justify-center">
+        <LuSun className={`absolute transition-all duration-500 scale-110 ${isDark ? 'opacity-0 rotate-90 scale-50' : 'opacity-100 rotate-0 text-amber-400'}`} />
+        <LuMoon className={`absolute transition-all duration-500 scale-110 ${isDark ? 'opacity-100 rotate-0 text-brand-400' : 'opacity-0 -rotate-90 scale-50'}`} />
+      </div>
+    </button>
+  )
+}
+
 /* ─── Desktop Sidebar ──────────────────────────────────────────────────────── */
 function Sidebar() {
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-surface-800 border-r border-white/5 shrink-0">
+    <aside className="hidden md:flex flex-col w-64 border-r shrink-0 transition-colors duration-200"
+      style={{ backgroundColor: 'var(--surface-800)', borderColor: 'var(--border)' }}>
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-white/5 flex items-center justify-center">
+      <div className="px-6 py-5 flex items-center justify-center"
+        style={{ borderBottom: '1px solid var(--border)' }}>
         <img src={logoLateral} alt="JAUV Studio" className="h-10 w-auto object-contain" />
       </div>
 
@@ -38,20 +60,29 @@ function Sidebar() {
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                 isActive
                   ? 'bg-brand-600/80 text-white shadow-glow'
-                  : 'text-gray-400 hover:bg-surface-700 hover:text-white'
+                  : 'hover:bg-surface-700'
               }`
-            }>
+            }
+            style={({ isActive }) => isActive ? {} : { color: 'var(--fg-muted)' }}
+          >
             <span className="text-lg w-6 flex items-center justify-center">{icon}</span>
             <span>{label}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Currency indicator */}
-      <div className="px-4 py-4 border-t border-white/5">
+      {/* Footer: currency + theme toggle */}
+      <div className="px-4 py-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+        {/* Theme toggle row */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--fg-subtle)' }}>Tema</span>
+          <ThemeToggle />
+        </div>
+
+        {/* Currency indicator */}
         <div className="w-full flex items-center justify-between bg-brand-900/40 border border-brand-500/30 rounded-xl px-3 py-2">
-          <span className="text-xs text-gray-400 uppercase tracking-wider">Moneda</span>
-          <span className="text-white font-mono font-bold text-sm">Bs. VES</span>
+          <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--fg-muted)' }}>Moneda</span>
+          <span className="font-mono font-bold text-sm" style={{ color: 'var(--fg)' }}>Bs. VES</span>
         </div>
       </div>
     </aside>
@@ -61,17 +92,18 @@ function Sidebar() {
 /* ─── Mobile Bottom Nav ────────────────────────────────────────────────────── */
 function BottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-800/95 backdrop-blur-lg border-t border-white/5 safe-area-bottom">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-lg safe-area-bottom transition-colors duration-200"
+      style={{ backgroundColor: 'color-mix(in srgb, var(--surface-800) 95%, transparent)', borderTop: '1px solid var(--border)' }}>
       <div className="flex items-stretch">
         {NAV_ITEMS.map(({ to, icon, label }) => (
           <NavLink key={to} to={to} end={to === '/'}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-all duration-150 ${
-                isActive
-                  ? 'text-brand-400'
-                  : 'text-gray-500 hover:text-gray-300'
+                isActive ? 'text-brand-400' : ''
               }`
-            }>
+            }
+            style={({ isActive }) => isActive ? {} : { color: 'var(--fg-subtle)' }}
+          >
             {({ isActive }) => (
               <>
                 <span className={`text-xl transition-transform duration-150 ${isActive ? 'scale-110' : ''}`}>{icon}</span>
@@ -89,9 +121,11 @@ function BottomNav() {
 /* ─── Main Layout ──────────────────────────────────────────────────────────── */
 function Layout() {
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden transition-colors duration-200"
+      style={{ backgroundColor: 'var(--surface-900)' }}>
       <Sidebar />
-      <main className="flex-1 overflow-hidden bg-surface-900">
+      <main className="flex-1 overflow-hidden transition-colors duration-200"
+        style={{ backgroundColor: 'var(--surface-900)' }}>
         <Routes>
           <Route path="/"           element={<Dashboard />} />
           <Route path="/pos"        element={<POS />} />

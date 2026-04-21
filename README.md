@@ -37,6 +37,9 @@ El proyecto utiliza un stack tecnológico robusto y moderno:
 6. **Reportes y Cierres de Caja**:.
 7. **Impresión de Tickets**:
    - Plantillas personalizables para impresoras térmicas de 58mm y 80mm.
+8. **Interfaz Visual Adaptable (Dark/Light Mode)**: 
+   - Sistema de temas dinámico que permite alternar entre modo claro y oscuro.
+   - Implementado con variables CSS semánticas para una visualización consistente y profesional en cualquier condición de iluminación.
 
 ---
 

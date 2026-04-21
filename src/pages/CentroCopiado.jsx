@@ -94,8 +94,8 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
         <form onSubmit={submit} className="space-y-4">
           <div><label className="label">Nombre *</label><input className="input" required value={form.nombre} onChange={e => set('nombre', e.target.value)} /></div>
 
-          <div className="pt-2 pb-1 border-t border-white/5">
-            <p className="text-xs text-gray-500 bg-surface-700 rounded-lg px-3 py-2 mb-3">💡 El precio siempre se ingresa en <strong>Bolívares (Bs.)</strong></p>
+          <div className="pt-2 pb-1" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-xs rounded-lg px-3 py-2 mb-3" style={{ color: 'var(--fg-subtle)', backgroundColor: 'var(--surface-700)' }}>💡 El precio siempre se ingresa en <strong>Bolívares (Bs.)</strong></p>
             <label className="label">Precio (Bs.)</label>
             <input className="input" type="number" min="0" step="0.01" required value={form.precio} onChange={e => set('precio', e.target.value)} />
           </div>
@@ -111,7 +111,7 @@ function ServicioModal({ servicio, insumos, onClose, onSave }) {
             <div className="flex items-center gap-2">
               <input type="checkbox" id="activo_srv" className="accent-brand-500"
                 checked={!!form.activo} onChange={e => set('activo', e.target.checked ? 1 : 0)} />
-              <label htmlFor="activo_srv" className="text-sm text-gray-300">Servicio activo</label>
+              <label htmlFor="activo_srv" className="text-sm" style={{ color: 'var(--fg-muted)' }}>Servicio activo</label>
             </div>
           )}
 
@@ -145,7 +145,7 @@ function AjusteModal({ insumo, onClose, onSave }) {
           <h2 className="text-lg font-bold">Ajustar Stock — {insumo.nombre}</h2>
           <button onClick={onClose} className="btn-ghost btn-sm">✕</button>
         </div>
-        <p className="text-gray-400 text-sm mb-4">Stock actual: <strong className="text-white">{insumo.stock_hojas} hojas</strong></p>
+        <p className="text-sm mb-4" style={{ color: 'var(--fg-muted)' }}>Stock actual: <strong style={{ color: 'var(--fg)' }}>{insumo.stock_hojas} hojas</strong></p>
         <form onSubmit={submit} className="space-y-4">
           <div><label className="label">Operación</label>
             <select className="select" value={form.operacion} onChange={e => setForm(p => ({ ...p, operacion: e.target.value }))}>
@@ -194,8 +194,8 @@ export default function CentroCopiado() {
 
   const servicioRows = useMemo(() => servicios.map(s => (
     <tr key={s.id}>
-      <td className="font-medium text-white">{s.nombre}</td>
-      <td className="text-gray-400 text-xs">{s.insumo_nombre || '—'}</td>
+      <td className="font-medium" style={{ color: 'var(--fg)' }}>{s.nombre}</td>
+      <td className="text-xs" style={{ color: 'var(--fg-muted)' }}>{s.insumo_nombre || '—'}</td>
       <td className="text-right">
         <span className="text-accent-green font-bold bg-accent-green/10 px-2 py-0.5 rounded-md text-xs border border-accent-green/20">
           {fmt(s.precio)}
@@ -214,17 +214,18 @@ export default function CentroCopiado() {
   return (
     <div className="page">
       <div className="page-header">
-        <div><h1 className="page-title">🖨️ Centro de Copiado</h1><p className="text-sm text-gray-500">Insumos y catálogo de servicios</p></div>
+        <div><h1 className="page-title">🖨️ Centro de Copiado</h1><p className="text-sm" style={{ color: 'var(--fg-muted)' }}>Insumos y catálogo de servicios</p></div>
         <button onClick={() => { setSelected(null); setModal(tab === 'insumos' ? 'insumo' : 'servicio') }} className="btn-primary">
           + {tab === 'insumos' ? 'Nuevo Insumo' : 'Nuevo Servicio'}
         </button>
       </div>
 
-      <div className="shrink-0 bg-surface-800 rounded-xl p-1 border border-white/5 overflow-x-auto">
+      <div className="shrink-0 rounded-xl p-1 overflow-x-auto card">
         <div className="flex gap-1 min-w-max">
           {['insumos', 'servicios'].map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === t ? 'bg-brand-600 text-white' : 'hover:bg-surface-700'}`}
+              style={tab !== t ? { color: 'var(--fg-muted)' } : {}}>
               {t === 'insumos' ? '📄 Insumos (Papel)' : '📋 Catálogo de Servicios'}
             </button>
           ))}
@@ -242,14 +243,15 @@ export default function CentroCopiado() {
                 const bajo = i.stock_hojas <= i.stock_minimo
                 return (
                   <tr key={i.id} className={bajo ? 'bg-red-900/10' : ''}>
-                    <td className="font-medium text-white">{i.nombre}</td>
+                    <td className="font-medium" style={{ color: 'var(--fg)' }}>{i.nombre}</td>
                     <td><span className="badge-blue capitalize">{i.tipo}</span></td>
                     <td className="text-center">
-                      <span className={`font-bold ${bajo ? 'text-red-400' : 'text-white'}`}>{i.stock_hojas}</span>
+                      <span className={`font-bold ${bajo ? 'text-red-400' : ''}`}
+                        style={!bajo ? { color: 'var(--fg)' } : {}}>{i.stock_hojas}</span>
                       {bajo && <span className="badge-red ml-2">⚠️ bajo</span>}
                     </td>
-                    <td className="text-gray-400">{i.stock_minimo}</td>
-                    <td className="text-gray-300">{fmt(i.costo_por_hoja)}/hoja</td>
+                    <td style={{ color: 'var(--fg-muted)' }}>{i.stock_minimo}</td>
+                    <td style={{ color: 'var(--fg-dim)' }}>{fmt(i.costo_por_hoja)}/hoja</td>
                     <td>
                       <div className="flex gap-1">
                         <button onClick={() => { setSelected(i); setModal('ajuste') }} className="btn-ghost btn-sm" title="Ajustar stock">📊</button>
