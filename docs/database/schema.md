@@ -81,6 +81,9 @@ Catálogo de servicios (fotocopias, impresiones).
 | `estado` | TEXT | 'pagada' o 'credito' |
 | `saldo_pendiente_usd` | REAL | Saldo por cobrar en VES |
 
+> [!NOTE]
+> **Integridad de Deudas**: A diferencia de las ventas pagadas, las ventas en estado `credito` permiten la actualización de sus totales mediante la sincronización de precios de ítems individuales para reflejar cambios en el mercado. Esta operación es atómica y reajusta tanto el `total_usd` como el `saldo_pendiente_usd`.
+
 ---
 
 ### Tabla `detalle_venta`

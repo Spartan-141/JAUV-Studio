@@ -129,6 +129,7 @@ const cfg = await window.api.invoke('config:getAll')
 | Canal | Signature | Descripción |
 |-------|-----------|-------------|
 | `productos:list` | `(filters?) => Producto[]` | Lista productos con JOIN a categoría |
+| `productos:paginated` | `(params) => PaginatedProductos` | Lista paginada con filtros y conteo total |
 | `productos:get` | `(id: number) => Producto | null` | Obtiene un producto por ID |
 | `productos:create` | `(data) => { id, codigo }` | Crea producto, genera código si no se provee |
 | `productos:update` | `({ id, ...data }) => boolean` | Actualiza producto |
@@ -318,7 +319,8 @@ COMMIT
 | `cuentas:list` | `() => Venta[]` | Lista ventas con `estado = 'credito'` (con saldo_pendiente_usd > 0) |
 | `cuentas:get` | `(ventaId: number) => VentaCompleta` | Obtiene una venta de crédito con todos sus detalles, pagos y abonos |
 | `cuentas:abonar` | `({ venta_id, metodo, monto_usd, monto_ves, tasa }) => { saldo_pendiente_usd, estado }` | Registra un abono (pago parcial) y recalcula el saldo |
-| `cuentas:ajustar_deuda` | `({ venta_id, nuevo_saldo_ves, nueva_tasa_cambio }) => { saldo_pendiente_usd, tasa_cambio, estado }` | Ajuste manual de deuda por admin (útil si se renegocia) |
+| `cuentas:ajustar_deuda` | `({ venta_id, nuevo_saldo_ves }) => boolean` | Ajuste manual del saldo pendiente. Recalcula el total de la factura para mantener coherencia. |
+| `cuentas:sincronizar_precio` | `({ venta_id, detalle_id, nuevo_precio }) => boolean` | Actualiza el precio de un ítem en una factura abierta y recalcula totales/saldo. |
 
 **`cuentas:abonar` proceso:**
 ```javascript

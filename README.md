@@ -24,19 +24,17 @@ El proyecto utiliza un stack tecnológico robusto y moderno:
    - Eliminación de la complejidad de tasas de cambio dinámicas para una contabilidad más clara.
 2. **Punto de Venta (POS) Inteligente**:
    - Búsqueda instantánea de productos y servicios.
-   - Soporte para múltiples métodos de pago en bolívares: Efectivo, Pago Móvil y Transferencia.
-   - Cálculo automático de cambio (vuelto) en una sola moneda.
+   - Soporte para múltiples métodos de pago: Efectivo, Pago Móvil y Transferencia.
 3. **Módulo de Centro de Copiado**:
-   - Gestión inteligente que diferencia entre el servicio cobrado y el insumo (papel) realmente consumido.
-4. **Inventario Robusto**:
-   - Alertas visuales de stock bajo y gestión de mermas (daños, pérdidas).
-   - Generación de códigos únicos y compatibilidad con lectores de códigos de barras.
+   - Gestión inteligente que diferencia entre el servicio cobrado y el insumo realmente consumido.
+4. **Inventario de Alto Rendimiento**:
+   - **Paginación Server-Side**: Optimizado para catálogos masivos sin pérdida de rendimiento.
+   - Alertas visuales de stock bajo y gestión de mermas.
 5. **Cuentas por Cobrar**:
-   - Registro de clientes y seguimiento de créditos/saldos pendientes en VES.
+   - Registro de clientes con sumatoria real de pagos recibidos.
+   - **Sincronización de precios**: Capacidad de actualizar facturas abiertas si el precio del inventario cambia.
    - Sistema de abonos para pagos parciales.
-6. **Reportes y Cierres de Caja**:
-   - Métricas de ingresos, ganancia neta y deudas activas centralizadas.
-   - Desglose detallado por métodos de pago al cierre del día.
+6. **Reportes y Cierres de Caja**:.
 7. **Impresión de Tickets**:
    - Plantillas personalizables para impresoras térmicas de 58mm y 80mm.
 

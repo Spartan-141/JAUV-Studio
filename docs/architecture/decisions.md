@@ -391,3 +391,46 @@ Eliminar todo rastro de conversión automática de moneda y establecer el Bolív
 - El histórico de ventas se simplifica a montos totales en VES.
 - Se requiere una carga inicial de precios en la moneda local.
 
+---
+
+## ADR-015: Paginación del Inventario desde el Servidor (Server-Side)
+
+**Estado:** ✅ Aceptada (V2.7.0)
+
+**Contexto:**
+A medida que el catálogo de productos crece, cargar el listado completo de artículos en el frontend genera problemas de memoria y degradación del rendimiento de la interfaz.
+
+**Decisión:**
+Migrar el listado de inventario a un modelo de paginación por demanda (Server-Side Pagination) utilizando los parámetros `LIMIT` y `OFFSET` de SQLite.
+
+**Razones:**
+1. **Escalabilidad**: Permite manejar miles de productos sin afectar la velocidad de carga.
+2. **Eficiencia de Red**: Solo se transmiten los 25 ítems (por defecto) necesarios para la vista actual.
+3. **Consistencia**: Unifica el patrón de visualización de datos masivos con el módulo de Reportes.
+
+**Consecuencias:**
+- Se requiere manejar el estado de página y filtros en el backend.
+- La búsqueda Fuzzy ahora se ejecuta en el motor de base de datos antes de paginar.
+
+---
+
+## ADR-016: Sincronización Transaccional de Precios en Cuentas por Cobrar
+
+**Estado:** ✅ Aceptada (V2.7.0)
+
+**Contexto:**
+La volatilidad económica requiere que las deudas abiertas puedan ser ajustadas si el precio del producto cambia en el inventario antes de que el cliente liquide su saldo. Anteriormente, esto requería ajustes manuales propensos a errores.
+
+**Decisión:**
+Implementar un mecanismo de sincronización que detecte discrepancias de precio y permita actualizar ítems individuales dentro de una factura de crédito abierta de forma atómica.
+
+**Razones:**
+1. **Precisión Financiera**: Permite que la deuda refleje el valor real del producto al momento de pago si así se acuerda con el cliente.
+2. **Atomicidad**: El uso de `BEGIN TRANSACTION` asegura que el subtotal del ítem, el total de la factura y el saldo pendiente se actualicen simultáneamente o no se actualicen en absoluto.
+3. **Soporte Bidireccional**: Maneja tanto subidas (inflación) como bajadas (ofertas) de precio.
+
+**Consecuencias:**
+- El `total` de una venta ya no es inmutable después de la creación si la cuenta sigue abierta.
+- Requiere que el cálculo de montos "Cobrados" ignore el total y se base en la suma de pagos reales para evitar inconsistencias visuales.
+
+
