@@ -310,7 +310,7 @@ Es una aplicación de escritorio para un único negocio, usada por múltiples em
 
 **Razón:** El entorno es de confianza (solo empleados en tienda). No se requieren permisos diferentes (todos hacen lo mismo). La trazabilidad de quién hizo cada venta no es crítica para el negocio actual.
 
-**Nota:** Si en el futuro se necesita, se puede añadir una tabla `usuarios` y login screen, pero es out of scope v2.5.0.
+**Nota:** Si en el futuro se necesita, se puede añadir una tabla `usuarios` y login screen, pero es out of scope v2.6.0.
 
 ---
 
@@ -368,7 +368,7 @@ El input de búsqueda en POS debe ser responsivo pero no disparar queries en cad
 
 ## ADR-013: Migración a Sistema de Moneda Única (Bolívares)
 
-**Estado:** ✅ Aceptada (V2.5.0)
+**Estado:** ✅ Aceptada (V2.6.0)
 
 **Contexto:**
 El sistema de moneda dual (ADR-006) introducía una complejidad significativa en el mantenimiento de precios, reportes y conciliación de pagos debido a la volatilidad de la tasa de cambio. Se decidió simplificar el sistema para operar exclusivamente en la moneda local (VES).

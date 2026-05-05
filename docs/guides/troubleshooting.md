@@ -417,7 +417,7 @@ sqlite3.verbose()  // al inicio
 - **Horario:** Lunes a Viernes, 8am - 5pm (hora Venezuela)
 
 **Información a提供 al contactar:**
-- Versión de la app (2.5.0)
+- Versión de la app (2.6.0)
 - Sistema operativo
 - Descripción del problema (con screenshots si es UI)
 

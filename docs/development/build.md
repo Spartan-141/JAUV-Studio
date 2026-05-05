@@ -28,7 +28,7 @@ npm run build
 **Resultados:**
 ```
 dist-electron/
-├── JAUV Studio Setup 2.5.0.exe    # Instalador Windows (NSIS)
+├── JAUV Studio Setup 2.6.0.exe    # Instalador Windows (NSIS)
 └── win-unpacked/                  # Versión portable (sin instalador)
     └── resources/
         ├── app.asar               # App comprimida
@@ -183,7 +183,7 @@ Para Windows (opcional pero recomendado para evitar warnings de SmartScreen):
 
 **Pasos:**
 1. Construir: `npm run build`
-2. El instalador estará en `dist-electron/JAUV Studio Setup 2.5.0.exe`
+2. El instalador estará en `dist-electron/JAUV Studio Setup 2.6.0.exe`
 3. Copiar a USB o servidor de descargas
 4. En la tienda: ejecutar instalador en cada PC
 
@@ -223,7 +223,7 @@ resources\app.asar.unpacked\node_modules\.bin\electron.exe .
 **Mejor:** Usar el instalador NSIS y probar instalación en carpeta temporal:
 ```bash
 # Instalar en %TEMP%
-dist-electron\JAUV Studio Setup 2.5.0.exe /S /D=C:\temp\jauv-test
+dist-electron\JAUV Studio Setup 2.6.0.exe /S /D=C:\temp\jauv-test
 ```
 
 ---
@@ -265,7 +265,7 @@ Resultado: `dist-electron/win-unpacked.zip` (descomprimir y ejecutar `electron.e
 npm run build
 ```
 
-Resultado: `dist-electron/JAUV Studio Setup 2.5.0.exe`
+Resultado: `dist-electron/JAUV Studio Setup 2.6.0.exe`
 
 **Ventajas:**
 - Crea accesos directos
@@ -285,9 +285,9 @@ Resultado: `dist-electron/JAUV Studio Setup 2.5.0.exe`
 - **PATCH:** bug fixes
 
 **Actualizar versiones:**
-1. `package.json`: `"version": "2.5.0"`
+1. `package.json`: `"version": "2.6.0"`
 2. `electron/main.js` (si tiene constante)? - no
-3. Commit: `git commit -m "chore: bump version to 2.5.0"`
+3. Commit: `git commit -m "chore: bump version to 2.6.0"`
 
 ---
 
@@ -295,8 +295,8 @@ Resultado: `dist-electron/JAUV Studio Setup 2.5.0.exe`
 
 1. **Crear tag:**
 ```bash
-git tag -a v2.5.0 -m "Release 2.5.0 - Adds barcode scanning, improved reports"
-git push origin v2.5.0
+git tag -a v2.6.0 -m "Release 2.6.0"
+git push origin v2.6.0
 ```
 
 2. **GitHub Actions** (si está configurado) automáticamente:

@@ -323,7 +323,7 @@ Si encuentras bug durante testing manual:
 
 1. **Repasar pasos exactos** que lo causaron
 2. **Capturar consola log** (F12 → Console → copy)
-3. **Anotar versión** (2.5.0)
+3. **Anotar versión** (2.6.0)
 4. **Crear Issue** en GitHub con:
    - Título: "[BUG] descripción corta"
    - Pasos para reproducir

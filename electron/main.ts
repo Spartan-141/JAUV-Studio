@@ -1,22 +1,42 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
 
+// ─── Logging ────────────────────────────────────────────────────────────────
+const logFile = path.join(app.getPath('userData'), 'startup.log');
+function log(msg: any) {
+  const time = new Date().toISOString();
+  const line = `[${time}] ${msg}\n`;
+  try {
+    fs.appendFileSync(logFile, line);
+  } catch (e) {
+    console.error('Failed to write to log file:', e);
+  }
+  console.log(msg);
+}
+
+log('--- PROCESO DE INICIO ---');
+log(`Versión: ${app.getVersion()}`);
+log(`Plataforma: ${process.platform}`);
+log(`Arquitectura: ${process.arch}`);
+
 // ─── Intercept IPC Handlers for API Server ──────────────────────────────────
-ipcMain._customHandlers = new Map();
+(ipcMain as any)._customHandlers = new Map();
 const originalHandle = ipcMain.handle.bind(ipcMain);
-ipcMain.handle = (channel: any, listener: any) => {
-  ipcMain._customHandlers.set(channel, listener);
+ipcMain.handle = (channel: string, listener: any) => {
+  (ipcMain as any)._customHandlers.set(channel, listener);
   originalHandle(channel, listener);
 };
 
 // ─── DB bootstrap ───────────────────────────────────────────────────────────
 const { initDb } = require('./database/db');
 
-let mainWindow;
+let mainWindow: any;
 
 function createWindow() {
+  log('Creando ventana principal...');
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -34,89 +54,106 @@ function createWindow() {
   });
 
   if (isDev) {
+    log('Cargando URL de desarrollo: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    log(`Cargando archivo de producción: ${indexPath}`);
+    if (!fs.existsSync(indexPath)) {
+      log('¡ERROR! El archivo index.html no existe en la ruta especificada.');
+    }
+    mainWindow.loadFile(indexPath);
   }
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }: any) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
+
+  mainWindow.on('ready-to-show', () => {
+    log('Ventana lista para mostrar.');
+    mainWindow.show();
+  });
 }
 
-app.whenReady().then(async () => {
-  await initDb();
+// ─── Single Instance Lock ───────────────────────────────────────────────────
+const gotTheLock = app.requestSingleInstanceLock();
 
-  // DDD Architecture Setup
-  const { setupDI } = require('./infrastructure/di/setup');
-  setupDI();
-
-  const { container } = require('./infrastructure/di/container');
-  const configController = container.resolve('ConfigIpcController');
-  configController.register();
-
-  const categoriasController = container.resolve('CategoriasIpcController');
-  categoriasController.register();
-
-  const insumosController = container.resolve('InsumosIpcController');
-  insumosController.register();
-
-  const serviciosController = container.resolve('ServiciosIpcController');
-  serviciosController.register();
-
-  const productosController = container.resolve('ProductosIpcController');
-  productosController.register();
-
-  const ventasController = container.resolve('VentasIpcController');
-  ventasController.register();
-
-  const cuentasController = container.resolve('CuentasIpcController');
-  cuentasController.register();
-
-  const mermasController = container.resolve('MermasIpcController');
-  mermasController.register();
-
-  const reportesController = container.resolve('ReportesIpcController');
-  reportesController.register();
-
-  // Register remaining legacy IPC handlers
-  // require('./database/handlers/config'); // Migrated to DDD
-  // require('./database/handlers/categorias'); // Migrated to DDD
-  // require('./database/handlers/productos'); // Migrated to DDD
-  // require('./database/handlers/insumos'); // Migrated to DDD
-  // require('./database/handlers/servicios'); // Migrated to DDD
-  // require('./database/handlers/ventas'); // Migrated to DDD
-  // require('./database/handlers/cuentas'); // Migrated to DDD
-  // require('./database/handlers/reportes'); // Migrated to DDD
-  // require('./database/handlers/mermas'); // Migrated to DDD
-
-  // Start local HTTP API for mobile clients on the same network
-  try {
-    const { startApiServer } = require('./api-server');
-    startApiServer();
-  } catch (err) {
-    console.error('[Startup] Failed to start API Server:', err);
-  }
-
-  createWindow();
-
-  // Grant camera & microphone access without a prompt (needed for html5-qrcode via DroidCam)
-  session.defaultSession.setPermissionRequestHandler((_webContents: any, permission: any, callback: any) => {
-    const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone', 'display-capture'];
-    callback(allowed.includes(permission));
-  });
-  session.defaultSession.setPermissionCheckHandler((_webContents: any, permission: any) => {
-    const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone'];
-    return allowed.includes(permission);
+if (!gotTheLock) {
+  log('Ya hay una instancia ejecutándose. Cerrando esta instancia.');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    log('Se intentó abrir una segunda instancia. Enfocando ventana principal.');
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   });
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  app.whenReady().then(async () => {
+    try {
+      log('Iniciando base de datos...');
+      await initDb();
+      log('Base de datos inicializada correctamente.');
+
+      log('Configurando Inyección de Dependencias (DI)...');
+      const { setupDI } = require('./infrastructure/di/setup');
+      setupDI();
+      log('DI configurado.');
+
+      const { container } = require('./infrastructure/di/container');
+      
+      log('Registrando controladores IPC...');
+      const controllers = [
+        'ConfigIpcController', 'CategoriasIpcController', 'InsumosIpcController',
+        'ServiciosIpcController', 'ProductosIpcController', 'VentasIpcController',
+        'CuentasIpcController', 'MermasIpcController', 'ReportesIpcController'
+      ];
+
+      for (const ctrlName of controllers) {
+        log(`Registrando ${ctrlName}...`);
+        const ctrl = container.resolve(ctrlName);
+        ctrl.register();
+      }
+
+      log('Iniciando servidor API local...');
+      try {
+        const { startApiServer } = require('./api-server');
+        startApiServer();
+        log('Servidor API iniciado.');
+      } catch (err: any) {
+        log(`[Error] Falló el inicio del API Server: ${err.message}`);
+      }
+
+      createWindow();
+
+      session.defaultSession.setPermissionRequestHandler((_webContents: any, permission: string, callback: (allowed: boolean) => void) => {
+        const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone', 'display-capture'];
+        callback(allowed.includes(permission));
+      });
+      session.defaultSession.setPermissionCheckHandler((_webContents: any, permission: string) => {
+        const allowed = ['media', 'mediaKeySystem', 'camera', 'microphone'];
+        return allowed.includes(permission);
+      });
+
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      });
+
+    } catch (error: any) {
+      log(`¡ERROR CRÍTICO DURANTE EL INICIO!: ${error.stack}`);
+      dialog.showErrorBox(
+        'Error de Inicio - JAUV Studio POS',
+        `No se pudo iniciar la aplicación.\n\nDetalles:\n${error.message}\n\nRevisa el archivo de log en: ${logFile}`
+      );
+      app.quit();
+    }
   });
-});
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+

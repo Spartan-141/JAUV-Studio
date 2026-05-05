@@ -162,7 +162,7 @@ El sistema maneja conversiones extremas con un rango amplio de valores. Esto per
 - `better-sqlite3` requiere herramientas de compilación nativa (`npm install --global windows-build-tools` en Windows)
 
 ### Versiones
-- package.json `version: "2.5.0"` coincide con la app
+- package.json `version: "2.6.0"` coincide con la app
 - Se sigue semver pero manual (no hay CI/CD automatizado)
 
 ### Despliegue

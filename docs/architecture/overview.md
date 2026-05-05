@@ -4,7 +4,7 @@
 
 JAUV Studio POS es una aplicación de escritorio **Electron** que ejecuta una interfaz **React** en el renderer process y lógica de negocio en el **main process** (Node.js). La comunicación se realiza mediante **IPC (Inter-Process Communication)** seguro con `contextBridge`.
 
-A partir de la versión 2.5.0, el sistema opera exclusivamente bajo un esquema de **Moneda Única (Bolívares - VES)**, simplificando la lógica de negocio y eliminando la dependencia de tasas de cambio externas para la operación base.
+A partir de la versión 2.6.0, el sistema opera exclusivamente bajo un esquema de **Moneda Única (Bolívares - VES)**, simplificando la lógica de negocio y eliminando la dependencia de tasas de cambio externas para la operación base.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

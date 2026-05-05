@@ -1,6 +1,6 @@
 {
   "name": "jauv-studio-pos",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Sistema POS para JAUV Studio - Papelería Venezuela",
   "main": "dist-backend/main.js",
   "author": "JAUV Studio",
@@ -27,7 +27,8 @@
     "react-router-dom": "^7.2.0",
     "recharts": "^3.8.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
@@ -45,8 +46,7 @@
     "ts-jest": "^29.4.9",
     "typescript": "^6.0.3",
     "vite": "^6.2.1",
-    "wait-on": "^8.0.3",
-    "zod": "^4.3.6"
+    "wait-on": "^8.0.3"
   },
   "build": {
     "appId": "com.jauvstudio.pos",
@@ -57,6 +57,8 @@
     "win": {
       "icon": "img/icono.png"
     },
+    "asar": true,
+    "asarUnpack": "**/*.node",
     "files": [
       "dist/**/*",
       "dist-backend/**/*",

@@ -491,7 +491,7 @@ Estos canales fueron considerados pero no implementados:
 | Canal | Propuesto para | Razón no implementado |
 |-------|----------------|-----------------------|
 | `productos:bulk_update` | Actualizar múltiples productos precios | No necesario, UI no lo requiere |
-| `ventas:refund` | Devolución/nota de crédito | Fuera de scope v2.5.0 |
+| `ventas:refund` | Devolución/nota de crédito | Fuera de scope v2.6.0 |
 | `usuarios:*` | Autenticación | No hay login |
 | `config:reset` | Resetear toda la DB | Peligroso, no expuesto |
 | `db:vacuum` | Compactar DB | Manual, no automático |
