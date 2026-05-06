@@ -98,7 +98,8 @@ async function initDb() {
         cantidad INTEGER NOT NULL,
         cantidad_hojas_gastadas INTEGER DEFAULT 0,
         precio_unitario_usd REAL NOT NULL,
-        subtotal_usd REAL NOT NULL
+        subtotal_usd REAL NOT NULL,
+        insumo_id INTEGER REFERENCES insumos(id) ON DELETE SET NULL
       );
 
       CREATE TABLE IF NOT EXISTS pagos (
@@ -188,6 +189,12 @@ async function initDb() {
     try {
       await db.run('ALTER TABLE cierres_dia ADD COLUMN ganancia_neta_usd REAL DEFAULT 0');
       console.log('[DB] Migration: added ganancia_neta_usd to cierres_dia');
+    } catch (_) { /* column already exists */ }
+
+    // Add insumo_id to detalle_venta if it doesn't exist yet (BUG #1 fix)
+    try {
+      await db.run('ALTER TABLE detalle_venta ADD COLUMN insumo_id INTEGER REFERENCES insumos(id) ON DELETE SET NULL');
+      console.log('[DB] Migration: added insumo_id to detalle_venta');
     } catch (_) { /* column already exists */ }
 
     // Add dual-pricing columns to productos if they don't exist

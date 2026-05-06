@@ -28,7 +28,7 @@ function mapDetalle(d: any): DetalleVenta {
     cantidad_hojas_gastadas: d.cantidad_hojas_gastadas,
     precio_unitario: d.precio_unitario_usd,
     subtotal: d.subtotal_usd,
-    insumo_id: d.insumo_id,
+    insumo_id: d.insumo_id ?? null,
   };
 }
 
@@ -73,11 +73,14 @@ export class SqliteVentasRepository implements IVentasRepository {
     try {
       const dbConn = this.db.getConnection();
       await dbConn.run(`
-        INSERT INTO detalle_venta (venta_id, tipo, ref_id, nombre, cantidad, cantidad_hojas_gastadas, precio_unitario_usd, subtotal_usd)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO detalle_venta
+          (venta_id, tipo, ref_id, nombre, cantidad, cantidad_hojas_gastadas,
+           precio_unitario_usd, subtotal_usd, insumo_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         ventaId, item.tipo, item.ref_id, item.nombre, item.cantidad,
-        item.cantidad_hojas_gastadas || 0, item.precio_unitario, item.subtotal
+        item.cantidad_hojas_gastadas || 0, item.precio_unitario, item.subtotal,
+        item.insumo_id ?? null,
       ]);
       return ResultFactory.ok(undefined);
     } catch (e) {
@@ -180,10 +183,22 @@ export class SqliteVentasRepository implements IVentasRepository {
       `, sqlParams);
 
       const gananciaRow = await dbConn.get(`
-        SELECT SUM((dv.precio_unitario_usd - COALESCE(p.precio_compra_ves, 0)) * dv.cantidad) AS ganancia_bruta
+        SELECT
+          SUM(
+            CASE dv.tipo
+              -- Productos: ganancia = (precio_venta - precio_compra) * cantidad
+              WHEN 'producto' THEN
+                (dv.precio_unitario_usd - COALESCE(p.precio_compra_ves, 0)) * dv.cantidad
+              -- Servicios: ganancia = subtotal - (costo_por_hoja * hojas_gastadas)
+              WHEN 'servicio' THEN
+                dv.subtotal_usd - COALESCE(ins.costo_por_hoja_usd, 0) * COALESCE(dv.cantidad_hojas_gastadas, dv.cantidad)
+              ELSE dv.subtotal_usd
+            END
+          ) AS ganancia_bruta
         FROM detalle_venta dv
         JOIN ventas v ON v.id = dv.venta_id
         LEFT JOIN productos p ON p.id = dv.ref_id AND dv.tipo = 'producto'
+        LEFT JOIN insumos ins ON ins.id = dv.insumo_id AND dv.tipo = 'servicio'
         ${whereClauseJoined}
       `, sqlParams);
       

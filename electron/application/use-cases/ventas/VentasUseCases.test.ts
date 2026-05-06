@@ -38,6 +38,7 @@ describe('VentasUseCases', () => {
 
     mockInsumosRepo = {
       ajustarStock: jest.fn(),
+      ajustarStockRaw: jest.fn(),
       getAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -158,12 +159,12 @@ describe('VentasUseCases', () => {
       mockVentasRepo.create.mockResolvedValue(ResultFactory.ok(124));
       mockVentasRepo.addDetalle.mockResolvedValue(ResultFactory.ok(undefined));
       mockVentasRepo.addPago.mockResolvedValue(ResultFactory.ok(undefined));
-      mockInsumosRepo.ajustarStock.mockResolvedValue(ResultFactory.ok({ stock_hojas: 100 }));
+      mockInsumosRepo.ajustarStockRaw.mockResolvedValue(undefined);
 
       const result = await useCases.crearVenta(servicePayload);
 
       expect(result.isSuccess).toBe(true);
-      expect(mockInsumosRepo.ajustarStock).toHaveBeenCalledWith(2, 15, 'restar');
+      expect(mockInsumosRepo.ajustarStockRaw).toHaveBeenCalledWith(2, 15, 'restar');
     });
   });
 });

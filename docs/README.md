@@ -183,5 +183,5 @@ ISC - JAUV Studio
 
 ---
 
-**Última actualización:** Abril 2025  
-**Versión del documento:** 2.6.0 (coincide con la versión del software)
+**Última actualización:** Mayo 2026  
+**Versión del documento:** 2.7.0 (coincide con la versión del software)

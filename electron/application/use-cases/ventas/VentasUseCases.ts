@@ -91,8 +91,10 @@ export class VentasUseCases {
              await this.productosRepo.update(item.ref_id, { ...prod, stock_actual: newStock });
            }
         } else if (item.tipo === 'servicio' && item.insumo_id) {
-           const hojas = item.cantidad_hojas_gastadas || item.cantidad;
-           await this.insumosRepo.ajustarStock(item.insumo_id, hojas, 'restar');
+           const hojas = (item.cantidad_hojas_gastadas !== undefined && item.cantidad_hojas_gastadas > 0)
+             ? item.cantidad_hojas_gastadas
+             : item.cantidad;
+           await this.insumosRepo.ajustarStockRaw(item.insumo_id, hojas, 'restar');
         }
       }
 

@@ -91,9 +91,14 @@ Catálogo de servicios (fotocopias, impresiones).
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `venta_id` | INTEGER | FK a ventas |
-| `nombre` | TEXT | Snapshot del nombre |
-| `cantidad` | INTEGER | Unidades cobradas |
+| `tipo` | TEXT | 'producto' o 'servicio' |
+| `ref_id` | INTEGER | ID del producto o servicio |
+| `nombre` | TEXT | Snapshot del nombre en el momento de venta |
+| `cantidad` | INTEGER | Unidades cobradas (ej: número de copias) |
+| `cantidad_hojas_gastadas` | INTEGER | Hojas físicas consumidas (solo servicios) |
 | `precio_unitario_usd` | REAL | Precio en VES (Legacy name) |
+| `subtotal_usd` | REAL | Subtotal en VES |
+| `insumo_id` | INTEGER | FK a insumos (v2.7.0+) |
 
 ---
 

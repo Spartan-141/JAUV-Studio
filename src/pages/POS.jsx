@@ -134,17 +134,22 @@ function ServicioCopioModal({ servicio, onClose, onAdd }) {
   const [cant, setCant] = useState(1)
   const [hojas, setHojas] = useState(1)
 
+  const cantNum = parseInt(cant) || 1;
+  const hojasNum = parseInt(hojas) || cantNum;
   const precio = servicio.precio || 0
-  const subtotal = precio * cant
+  const subtotal = precio * cantNum
 
-  const add = () => onAdd({
-    tipo: 'servicio', ref_id: servicio.id,
-    nombre: servicio.nombre, cantidad: parseInt(cant),
-    cantidad_hojas_gastadas: parseInt(hojas),
-    precio_unitario: precio,
-    subtotal: subtotal,
-    insumo_id: servicio.insumo_id,
-  })
+  const add = () => {
+    if (cantNum < 1 || hojasNum < 1) return;
+    onAdd({
+      tipo: 'servicio', ref_id: servicio.id,
+      nombre: servicio.nombre, cantidad: cantNum,
+      cantidad_hojas_gastadas: hojasNum,
+      precio_unitario: precio,
+      subtotal: subtotal,
+      insumo_id: servicio.insumo_id,
+    })
+  }
 
   return (
     <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
@@ -258,7 +263,15 @@ export default function POS() {
         setAlertMsg(`Solo quedan ${item.stock_actual} en stock de ${item.nombre}`)
         return prev.map((c, i) => i===idx ? { ...c, cantidad: item.stock_actual, subtotal: item.stock_actual * c.precio_unitario } : c)
       }
-      return prev.map((c, i) => i===idx ? { ...c, cantidad: qty, subtotal: qty * c.precio_unitario } : c)
+      return prev.map((c, i) => {
+        if (i !== idx) return c;
+        if (c.tipo === 'servicio' && c.cantidad_hojas_gastadas) {
+          const proporcion = c.cantidad_hojas_gastadas / c.cantidad;
+          const nuevasHojas = Math.max(1, Math.round(qty * proporcion));
+          return { ...c, cantidad: qty, cantidad_hojas_gastadas: nuevasHojas, subtotal: qty * c.precio_unitario };
+        }
+        return { ...c, cantidad: qty, subtotal: qty * c.precio_unitario };
+      })
     })
   }
   const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i!==idx))

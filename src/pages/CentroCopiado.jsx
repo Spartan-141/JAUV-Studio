@@ -12,7 +12,6 @@ function InsumoModal({ insumo, onClose, onSave }) {
   const submit = async (e) => {
     e.preventDefault(); setSaving(true)
     const data = {
-      nome: form.nombre,
       nombre: form.nombre,
       tipo: form.tipo,
       stock_hojas: parseInt(form.stock_hojas) || 0,

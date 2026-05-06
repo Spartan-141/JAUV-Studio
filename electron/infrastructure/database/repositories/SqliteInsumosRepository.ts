@@ -91,4 +91,20 @@ export class SqliteInsumosRepository implements IInsumosRepository {
       return ResultFactory.fail(e instanceof Error ? e : String(e));
     }
   }
+
+  /**
+   * Adjusts stock WITHOUT opening its own transaction.
+   * Call this inside an active UoW (e.g. crearVenta) to avoid nested BEGIN errors (BUG #2 fix).
+   */
+  async ajustarStockRaw(id: number, cantidad: number, operacion: 'sumar' | 'restar'): Promise<void> {
+    const dbConn = this.db.getConnection();
+    const insumo = await dbConn.get('SELECT stock_hojas FROM insumos WHERE id=?', [id]);
+    if (!insumo) throw new Error(`Insumo id=${id} no encontrado al ajustar stock`);
+
+    const nuevo = operacion === 'sumar'
+      ? insumo.stock_hojas + cantidad
+      : Math.max(0, insumo.stock_hojas - cantidad);
+
+    await dbConn.run('UPDATE insumos SET stock_hojas=? WHERE id=?', [nuevo, id]);
+  }
 }

@@ -130,6 +130,18 @@ WHERE id NOT IN (
 
 **Igual que Migración 4** pero para tabla `insumos` (db.js:225-237).
 
+### Migración 6 - Añadir `insumo_id` a `detalle_venta`
+
+**Fecha:** v2.7.0 (Mejora de trazabilidad de insumos)
+
+```sql
+ALTER TABLE detalle_venta ADD COLUMN insumo_id INTEGER REFERENCES insumos(id) ON DELETE SET NULL
+```
+
+**Motivo:** Se detectó que aunque el sistema descontaba el stock al vender un servicio, no guardaba qué insumo específico se utilizó en el registro de la venta. Esto impedía reportes históricos precisos de consumo de materiales.
+
+**Implementación:** db.js (sección de migraciones)
+
 ---
 
 ## 🌱 Seeding (Semillas Iniciales)
@@ -152,8 +164,8 @@ await initDb() {
   for c in ['Cuadernos', ...]: await db.run(insertCat, [c])
 
   // 4. SEED INSUMOS
-  await db.run(insertInsumo, ['Papel Carta', 'carta', 500, 50, 0.003])
-  await db.run(insertInsumo, ['Papel Oficio', 'oficio', 200, 30, 0.004])
+  await db.run(insertInsumo, ['Papel Carta', 'carta', 500, 50, 7.20])
+  await db.run(insertInsumo, ['Papel Oficio', 'oficio', 200, 30, 9.60])
 
   // 5. Obtener IDs de insumos recién creados
   const insumoCarta = await db.get('SELECT id FROM insumos WHERE nombre = ?', ['Papel Carta'])
@@ -161,7 +173,7 @@ await initDb() {
 
   // 6. SEED SERVICIOS (8 servicios, vinculados a insumos)
   if (insumoCarta && insumoOficio) {
-    await db.run(insertServicio, ['Copia B/N Carta', 0.05, insumoCarta.id])
+    await db.run(insertServicio, ['Copia B/N Carta', 2.00, insumoCarta.id])
     // ... 7 más
   }
 
@@ -175,7 +187,6 @@ await initDb() {
 
 | clave | valor | Uso |
 |-------|-------|-----|
-| `tasa_del_dia` | `40.00` | Tasa BCV predeterminada |
 | `nombre_tienda` | `JAUV Studio` | Header de ticket |
 | `telefono_tienda` | `` | Pie de ticket (vacío) |
 | `direccion_tienda` | `Venezuela` | Pie de ticket |
@@ -195,28 +206,28 @@ await initDb() {
 
 #### Insumos (2 filas)
 
-| nombre | tipo | stock_hojas | stock_minimo | costo_por_hoja_usd |
+| nombre | tipo | stock_hojas | stock_minimo | costo_por_hoja_ves |
 |--------|------|-------------|--------------|--------------------|
-| Papel Carta | carta | 500 | 50 | 0.003 |
-| Papel Oficio | oficio | 200 | 30 | 0.004 |
+| Papel Carta | carta | 500 | 50 | 7.20 |
+| Papel Oficio | oficio | 200 | 30 | 9.60 |
 
 #### Servicios (8 filas)
 
 Vinculados a los 2 insumos anteriores:
 
-| nombre | precio_usd | insumo_nombre |
+| nombre | precio_ves | insumo_nombre |
 |--------|------------|---------------|
-| Copia B/N Carta | 0.05 | Papel Carta |
-| Copia Color Carta | 0.15 | Papel Carta |
-| Impresión B/N Carta | 0.05 | Papel Carta |
-| Impresión Color Carta | 0.20 | Papel Carta |
-| Copia B/N Oficio | 0.07 | Papel Oficio |
-| Copia Color Oficio | 0.18 | Papel Oficio |
-| Impresión B/N Oficio | 0.07 | Papel Oficio |
-| Impresión Color Oficio | 0.25 | Papel Oficio |
+| Copia B/N Carta | 2.00 | Papel Carta |
+| Copia Color Carta | 6.00 | Papel Carta |
+| Impresión B/N Carta | 2.00 | Papel Carta |
+| Impresión Color Carta | 8.00 | Papel Carta |
+| Copia B/N Oficio | 2.80 | Papel Oficio |
+| Copia Color Oficio | 7.20 | Papel Oficio |
+| Impresión B/N Oficio | 2.80 | Papel Oficio |
+| Impresión Color Oficio | 10.00 | Papel Oficio |
 
 **Lógica de doble cantidad:**
-- Para `Copia B/N Carta`: se cobran X copias a $0.05 cada una, pero se consumen (X + errores) hojas de Papel Carta
+- Para `Copia B/N Carta`: se cobran X copias a 2.00 Bs cada una, pero se consumen (X + errores) hojas de Papel Carta
 
 ---
 
@@ -251,7 +262,8 @@ await window.api.invoke('config:reset-db') // NO EXISTE
 
 | Versión App | Migraciones aplicadas |
 |-------------|----------------------|
-| 2.4.0 | Migraciones 1-5 (todo) |
+| 2.7.0 | Migraciones 1-6 (actual) |
+| 2.4.0 | Migraciones 1-5 |
 | 2.3.0 | Migraciones 1-3 |
 | 2.2.0 | Migraciones 1-2 |
 | 2.1.0 | Migración 1 |
@@ -260,8 +272,8 @@ await window.api.invoke('config:reset-db') // NO EXISTE
 **Para detectar versión DB:**
 ```sql
 -- Buscar columnas que existan en versiones recientes:
+PRAGMA table_info(detalle_venta); -- ver si tiene insumo_id
 PRAGMA table_info(cierres_dia); -- ver si tiene ganancia_neta_usd
-PRAGMA table_info(productos); -- ver si tiene precio_compra_ves, precio_venta_ves, moneda_precio
 ```
 
 ---

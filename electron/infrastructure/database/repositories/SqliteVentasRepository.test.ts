@@ -34,7 +34,8 @@ async function createTestDb(): Promise<SqliteDb> {
       cantidad INTEGER NOT NULL,
       cantidad_hojas_gastadas INTEGER DEFAULT 0,
       precio_unitario_usd REAL NOT NULL,
-      subtotal_usd REAL NOT NULL
+      subtotal_usd REAL NOT NULL,
+      insumo_id INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS pagos (
@@ -111,16 +112,19 @@ describe('SqliteVentasRepository Integration', () => {
     const ventaId = createResult.getValue()!;
 
     await repo.addDetalle(ventaId, {
-      tipo: 'producto',
+      tipo: 'servicio',
       ref_id: 1,
       nombre: 'Prod A',
       cantidad: 2,
       precio_unitario: 25,
-      subtotal: 50
+      subtotal: 50,
+      insumo_id: 88
     });
 
     const getResult = await repo.getById(ventaId);
-    expect(getResult.getValue()?.detalles?.length).toBe(1);
-    expect(getResult.getValue()?.detalles?.[0].nombre).toBe('Prod A');
+    const sale = getResult.getValue()!;
+    expect(sale.detalles?.length).toBe(1);
+    expect(sale.detalles?.[0].nombre).toBe('Prod A');
+    expect(sale.detalles?.[0].insumo_id).toBe(88);
   });
 });
