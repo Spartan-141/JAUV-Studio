@@ -57,3 +57,6 @@ jauv_pos.db
 .npm/
 .yarn/
 
+# Testing
+coverage/
+
